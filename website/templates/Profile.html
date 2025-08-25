@@ -14,9 +14,9 @@
                     <div class="card-body d-flex flex-column flex-md-row align-items-center gap-4">
                         <!-- Profile Info Section -->
                         <div class="text-center text-md-start">
-                            <h3 class="fw-bold mb-3 text-theme">{{ user.name }}</h3>
-                            <p class="text-theme">{{ user.department }} | Year: {{ user.year_of_graduation }}</p>
-                            <p class="text-muted">Roll No: {{ user.roll_number }}</p>
+                            <h3 class="fw-bold mb-3 text-theme">{{ current_user.name }}</h3>
+                            <p class="text-theme">{{ current_user.department }} | Year: {{ current_user.year_of_graduation }}</p>
+                            <p class="text-muted">Roll No: {{ current_user.roll_number }}</p>
                         </div>
                     </div>
                 </div>
@@ -30,30 +30,31 @@
                     <div class="card-body">
                         <h5 class="fw-semibold text-theme mt-4 mb-3">Edit Your Details</h5>
                         <form method="POST" enctype="multipart/form-data">
+                            {{ csrf_token() }}
                             <input type="hidden" name="form_type" value="profile_update">
                             <div class="mb-3">
                                 <label for="name" class="form-label">Full Name</label>
-                                <input type="text" class="form-control glass-input" id="name" name="name" value="{{ user.name }}" required>
+                                <input type="text" class="form-control glass-input" id="name" name="name" value="{{ current_user.name }}" required>
                             </div>
                             <div class="mb-3">
                                 <label for="name" class="form-label">Roll Number</label>
-                                <input type="text" class="form-control glass-input" id="roll_number" name="roll_number" value="{{ user.roll_number }}" required>
+                                <input type="text" class="form-control glass-input" id="roll_number" name="roll_number" value="{{ current_user.roll_number }}" required>
                             </div>
                             <div class="mb-3">
                                 <label for="phone_number" class="form-label">Phone Number</label>
-                                <input type="text" class="form-control glass-input" id="phone_number" name="phone" value="{{ user.phone_number }}">
+                                <input type="text" class="form-control glass-input" id="phone_number" name="phone" value="{{ current_user.phone_number }}">
                             </div>
                             <div class="mb-3">
                                 <label for="email" class="form-label">Email</label>
-                                <input type="text" class="form-control glass-input" id="email" name="email" value="{{ user.email}}">
+                                <input type="text" class="form-control glass-input" id="email" name="email" value="{{ current_user.email}}">
                             </div>
                             <div class="mb-3">
                                 <label for="department" class="form-label">Department</label>
-                                <input type="text" class="form-control glass-input" id="department" name="department" value="{{ user.department }}">
+                                <input type="text" class="form-control glass-input" id="department" name="department" value="{{ current_user.department }}">
                             </div>
                             <div class="mb-3">
                                 <label for="year_of_graduation" class="form-label">Year of Graduation</label>
-                                <input type="number" class="form-control glass-input" id="year_of_graduation" name="year_of_graduation" value="{{ user.year_of_graduation }}">
+                                <input type="number" class="form-control glass-input" id="year_of_graduation" name="year_of_graduation" value="{{ current_user.year_of_graduation }}">
                             </div>
                             <!-- <div class="mb-3">
                                 <label for="profile_picture_url" class="form-label">Profile Picture URL</label>
@@ -71,6 +72,7 @@
                     <div class="card-body">
                         <h5 class="fw-semibold text-theme mt-4 mb-3">Reset Your Password</h5>
                         <form method="POST">
+                            {{ csrf_token() }}
                             <input type="hidden" name="form_type" value="password_reset">
                             <div class="mb-3">
                                 <label for="current_password" class="form-label">Current Password</label>

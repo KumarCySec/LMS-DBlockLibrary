@@ -1,140 +1,214 @@
 {% extends "StudentHome.html" %}
-
 {% block Main %}
 <main class="content px-3 py-2" id="dashboardcontent">
-    <div class="container-fluid">
+  <div class="container-fluid">
 
-        <!-- Title -->
-        <div class="mb-4 text-center text-md-start">
-            <h2 class="fw-bold">🎓 Student Dashboard</h2>
-        </div>
-
-        <!-- Welcome Card -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card border-0 shadow-lg rounded-4 p-3 bg-glass animate__animated animate__fadeIn">
-                    <div class="d-flex align-items-center justify-content-between flex-column flex-md-row">
-                        <div class="text-center text-md-start">
-                            <h4 class="fw-semibold">Welcome Back, <span class="text-primary">{{ current_user.name }}</span></h4>
-                            <p class="mb-0 text-muted">Explore your books and due dates below</p>
-                        </div>
-                        <img src="{{ url_for('static', filename='img/student.jpeg') }}"
-                             alt="Student Image"
-                             class="rounded-circle img-fluid mt-3 mt-md-0"
-                             style="width: 100px; height: 100px; object-fit: cover;">
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 🔴 Library Status + 👥 Today's Volunteers -->
-        <div class="row gy-4 mb-4">
-            <!-- Library Status -->
-            <div class="col-12 col-md-6">
-                <div class="card border-0 shadow-sm rounded-4 p-4 bg-glass text-center h-100">
-                    <h5 class="fw-bold mb-3"><i class="fas fa-university me-2 text-primary"></i>Library Status</h5>
-                    {% if library_status %}
-                        <span class="badge bg-success fs-5 py-2 px-4 rounded-pill"><i class="fas fa-door-open me-2"></i>Open Now</span>
-                    {% else %}
-                        <span class="badge bg-danger fs-5 py-2 px-4 rounded-pill"><i class="fas fa-door-closed me-2"></i>Currently Closed</span>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Today's Volunteers -->
-            <div class="col-12 col-md-6">
-                <div class="card border-0 shadow-sm rounded-4 p-4 bg-glass h-100">
-                    <h5 class="fw-bold mb-3"><i class="fas fa-user-friends me-2 text-secondary"></i>Today's Volunteers</h5>
-                    {% if today_volunteers %}
-                        {% for v in today_volunteers %}
-                        <p class="mb-2">
-                            <i class="fas fa-user-circle me-2 text-info"></i>
-                            <strong>{{ v.name }}</strong> — <span class="text-muted">{{ v.department }}</span>
-                        </p>
-                        {% endfor %}
-                    {% else %}
-                        <p class="text-muted">No volunteers assigned for today.</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Cards: Due Date & Checked Out -->
-        <div class="row gy-4">
-            <div class="col-12 col-md-6">
-                <div class="card border-0 shadow-sm rounded-4 p-4 bg-glass h-100">
-                    <h5 class="text-primary fw-bold mb-3"><i class="fas fa-calendar-alt me-2"></i>Next Due Date</h5>
-                    {% if nearest_due_book %}
-                        <p class="mb-2">📘 <strong>Book:</strong> {{ nearest_due_book.book.title }}</p>
-                        <p class="text-muted">🕓 <strong>Due:</strong> {{ nearest_due_book.due_date.strftime('%Y-%m-%d') }}</p>
-                    {% else %}
-                        <p class="text-muted">No books currently borrowed.</p>
-                    {% endif %}
-                </div>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <div class="card border-0 shadow-sm rounded-4 p-4 bg-glass h-100">
-                    <h5 class="fw-bold mb-3"><i class="fas fa-book-reader me-2"></i>Checked Out Books</h5>
-                    <ul class="list-unstyled mb-0">
-                        <li class="mb-2"><strong>Total:</strong> <span class="badge bg-primary fs-5">{{ total_checked_out_books }}</span></li>
-                        <li><strong>Days Until Next Due:</strong> 
-                            <span class="badge bg-warning text-dark fs-5">
-                                {% if days_until_next_due is not none %}
-                                    {{ days_until_next_due }}
-                                {% else %}
-                                    N/A
-                                {% endif %}
-                            </span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- New Arrivals -->
-        <div class="row mt-5">
-            <div class="col-12">
-                <div class="card border-0 shadow-sm rounded-4 p-4 bg-glass">
-                    <h5 class="fw-bold mb-4"><i class="fas fa-star me-2 text-success"></i>New Arrivals</h5>
-                    <div class="row g-3">
-                        {% for book in new_arrivals %}
-                        <div class="col-6 col-md-3">
-                            <div class="card rounded-3 h-100 shadow-sm border-0">
-                                <div class="card-body text-center">
-                                    <h6 class="card-title text-truncate">{{ book.title }}</h6>
-                                    <p class="text-muted small">{{ book.author }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Popular Books -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card border-0 shadow-sm rounded-4 p-4 bg-glass">
-                    <h5 class="fw-bold mb-4"><i class="fas fa-fire me-2 text-danger"></i>Popular Books</h5>
-                    <div class="row g-3">
-                        {% for book in popular_books %}
-                        <div class="col-6 col-md-3">
-                            <div class="card rounded-3 h-100 shadow-sm border-0">
-                                <img src="{{ book.image }}" class="card-img-top rounded-top" alt="{{ book.title }}" style="height: 150px; object-fit: cover;">
-                                <div class="card-body text-center">
-                                    <h6 class="card-title text-truncate">{{ book.title }}</h6>
-                                    <p class="text-muted small">{{ book.author }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-
+    <!-- Title -->
+    <div class="mb-4 text-center text-md-start">
+      <h2 class="fw-bold text-gradient">🎓 Student Dashboard</h2>
     </div>
+
+    <!-- Welcome Card -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card border-0 shadow-lg rounded-4 p-3 bg-glass animate__fadeIn">
+          <div class="d-flex flex-column flex-md-row align-items-center justify-content-between">
+            <div class="text-center text-md-start">
+              <h4 class="fw-semibold">
+                Welcome Back, <span class="text-primary">{{ current_user.name }}</span>
+              </h4>
+              <p class="mb-0 text-muted">Explore your books and due dates below</p>
+            </div>
+            <img src="{{ url_for('static', filename='img/student.jpeg') }}"
+                 alt="Student Image"
+                 class="rounded-circle mt-3 mt-md-0"
+                 style="width:100px;height:100px;object-fit:cover;">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Library Status & Volunteers -->
+    <div class="row gy-4 mb-4">
+      <!-- Library Status -->
+      <div class="col-12 col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 p-4 bg-glass text-center h-100">
+          <h5 class="fw-bold mb-3">
+            <i class="fas fa-university me-2 text-primary"></i>Library Status
+          </h5>
+          {% if library_status %}
+            <span class="badge bg-success fs-5 py-2 px-4 rounded-pill">
+              <i class="fas fa-door-open me-1"></i>Open Now
+            </span>
+          {% else %}
+            <span class="badge bg-danger fs-5 py-2 px-4 rounded-pill">
+              <i class="fas fa-door-closed me-1"></i>Currently Closed
+            </span>
+            <p class="mt-2 mb-0 next-open-student" style="display:none;">
+              Reopens: <strong id="studentNextOpen"></strong>
+            </p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Today's Volunteers -->
+      <div class="col-12 col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 p-4 bg-glass h-100">
+          <h5 class="fw-bold mb-3">
+            <i class="fas fa-user-friends me-2 text-secondary"></i>Today's Volunteers
+          </h5>
+          {% if today_volunteers %}
+            {% for v in today_volunteers %}
+            <p class="mb-2">
+              <i class="fas fa-user-circle me-2 text-info"></i>
+              <strong>{{ v.name }}</strong> — <span class="text-muted">{{ v.department }}</span>
+            </p>
+            {% endfor %}
+          {% else %}
+            <p class="text-muted">No volunteers assigned for today.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Next Due Date & Checked Out -->
+    <div class="row gy-4 mb-4">
+      <div class="col-12 col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 p-4 bg-glass h-100">
+          <h5 class="text-primary fw-bold mb-3">
+            <i class="fas fa-calendar-alt me-2"></i>Next Due Date
+          </h5>
+          {% if nearest_due_book %}
+            <p class="mb-2">📘 <strong>Book:</strong> {{ nearest_due_book.book.title }}</p>
+            <p class="text-muted mb-0">🕓 <strong>Due:</strong> {{ nearest_due_book.due_date.strftime('%Y-%m-%d') }}</p>
+          {% else %}
+            <p class="text-muted">No books currently borrowed.</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-12 col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 p-4 bg-glass h-100">
+          <h5 class="fw-bold mb-3">
+            <i class="fas fa-book-reader me-2"></i>Checked Out Books
+          </h5>
+          <ul class="list-unstyled mb-0">
+            <li class="mb-2">
+              <strong>Total:</strong>
+              <span class="badge bg-primary fs-5">{{ total_checked_out_books }}</span>
+            </li>
+            <li>
+              <strong>Days Until Next Due:</strong>
+              <span class="badge bg-warning text-dark fs-5">
+                {% if days_until_next_due is not none %}
+                  {{ days_until_next_due }}
+                {% else %}
+                  N/A
+                {% endif %}
+              </span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- New Arrivals -->
+    <div class="row mt-5">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4 p-4 bg-glass">
+          <h5 class="fw-bold mb-4">
+            <i class="fas fa-star me-2 text-success"></i>New Arrivals
+          </h5>
+          <div class="row g-3">
+            {% for book in new_arrivals %}
+            <div class="col-6 col-md-3">
+              <div class="card rounded-3 h-100 shadow-sm border-0">
+                <div class="card-body text-center">
+                  <h6 class="card-title text-truncate">{{ book.title }}</h6>
+                  <p class="text-muted small">{{ book.author }}</p>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Popular Books -->
+    <div class="row mt-4">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4 p-4 bg-glass">
+          <h5 class="fw-bold mb-4">
+            <i class="fas fa-fire me-2 text-danger"></i>Popular Books
+          </h5>
+          <div class="row g-3">
+            {% for book in popular_books %}
+            <div class="col-6 col-md-3">
+              <div class="card rounded-3 h-100 shadow-sm border-0">
+                <img src="{{ book.image }}"
+                     class="card-img-top rounded-top"
+                     alt="{{ book.title }}"
+                     style="height:150px; object-fit:cover;">
+                <div class="card-body text-center">
+                  <h6 class="card-title text-truncate">{{ book.title }}</h6>
+                  <p class="text-muted small">{{ book.author }}</p>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
 </main>
+
+<script>
+// Run after DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  const key = 'next_open_dt',
+        isOpen = {{ 'true' if library_status else 'false' }};
+  // If closed, show reopen time
+  if (!isOpen) {
+    const dt = localStorage.getItem(key);
+    const p = document.querySelector('.next-open-student'),
+          span = document.getElementById('studentNextOpen');
+    if (dt && p && span) {
+      const d = new Date(dt);
+      span.textContent = d.toLocaleString(navigator.language, {
+        weekday:'short', month:'short', day:'numeric',
+        hour:'2-digit', minute:'2-digit'
+      });
+      p.style.display = 'block';
+    }
+  }
+});
+</script>
+{% endblock %}
+
+{% block Styles %}
+<style>
+/* Glass effect */
+.bg-glass {
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(8px);
+}
+/* Gradient text */
+.text-gradient {
+  background: linear-gradient(90deg, #55b7ff, #00ccff);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+/* Ensure reopen text stands out */
+.next-open-student {
+  font-size: .95rem;
+  color: #dc3545;
+  font-weight: 500;
+}
+/* Responsive tweaks */
+@media (max-width:767px) {
+  .bg-glass { padding: 1.5rem !important; }
+}
+</style>
 {% endblock %}

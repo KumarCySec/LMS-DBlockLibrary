@@ -6,6 +6,7 @@
 
     <!-- Search form -->
     <form class="mb-3" method="GET" action="{{ url_for('lib.ViewStudentsDetails') }}">
+        {{ csrf_token() }}
         <div class="input-group">
             <input type="text" class="form-control" name="search" placeholder="Search by name or roll number" value="{{ search_query }}">
             <button class="btn btn-primary" type="submit">Search</button>

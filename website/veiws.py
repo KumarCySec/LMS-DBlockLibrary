@@ -9,8 +9,7 @@ from . import db
 from sqlalchemy.orm import joinedload
 import logging
 
-# Set up logger for debugging
-logging.basicConfig(level=logging.INFO)
+# Use app-level logging; module logger only
 logger = logging.getLogger(__name__)
 
 # Flask Blueprint
@@ -107,12 +106,7 @@ def home():
             else:
                 today_volunteers = []
 
-            if assignment:
-                print(f"[DEBUG] Assignment for {today_day}:")
-                print(f" - Volunteer 1: {assignment.volunteer1.name if assignment.volunteer1 else 'None'}")
-                print(f" - Volunteer 2: {assignment.volunteer2.name if assignment.volunteer2 else 'None'}")
-            else:
-                print(f"[DEBUG] No assignment found for {today_day}")
+            # debug prints removed
 
 
             # Borrowed books filtering and sorting
@@ -197,7 +191,7 @@ def export_checkout_register_excel():
     if current_user.role != "Librarian":
         return render_template('error.html', error_message="Unauthorized")
 
-    borrowed_books = BorrowedBook.query.all()
+    borrowed_books = BorrowedBook.query.options(joinedload(BorrowedBook.student), joinedload(BorrowedBook.book)).all()
     wb = Workbook()
     ws = wb.active
     ws.title = "Checkout Register"

@@ -7,15 +7,15 @@
     <!-- Tab Navigation for Mobile View -->
     <ul class="nav nav-tabs nav-justified flex-column flex-md-row" id="studentTab" role="tablist">
         <li class="nav-item">
-            <a class="nav-link active" id="pending_requests-tab" data-toggle="tab" href="#pending_requests" role="tab"
+            <a class="nav-link active" id="pending_requests-tab" data-bs-toggle="tab" href="#pending_requests" role="tab"
                 aria-controls="pending_requests" aria-selected="true">Pending Checkouts</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" id="verified-tab" data-toggle="tab" href="#verified" role="tab" aria-controls="verified"
+            <a class="nav-link" id="verified-tab" data-bs-toggle="tab" href="#verified" role="tab" aria-controls="verified"
                 aria-selected="false">Approved Checkouts</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" id="rejected-tab" data-toggle="tab" href="#rejected" role="tab" aria-controls="rejected"
+            <a class="nav-link" id="rejected-tab" data-bs-toggle="tab" href="#rejected" role="tab" aria-controls="rejected"
                 aria-selected="false">Rejected Checkouts</a>
         </li>
     </ul>
@@ -30,8 +30,8 @@
                     <!-- Card View for Mobile -->
                     <div class="d-block d-md-none">
                         {% for book in borrowed_books %}
-                        <div class="card student-card" data-toggle="modal"
-                            data-target="#studentDetailsModal-{{ book.student.id }}">
+                        <div class="card student-card" data-bs-toggle="modal"
+                            data-bs-target="#studentDetailsModal-{{ book.student.id }}">
                             <div class="card-body">
                                 <h5 class="card-title">{{ book.book.title }}</h5>
                                 <h6 class="card-subtitle mb-2 text-muted">{{ book.book.author }}</h6>
@@ -42,7 +42,7 @@
                                     }} <br>
                                 </p>
                                 <form method="POST" action="{{ url_for('lib.manage_checkouts') }}">
-                                    {{ form.csrf_token }}
+                                    {{ form.csrf_token if form else csrf_token() }}
                                     <input type="hidden" name="borrowed_book_id" value="{{ book.id }}">
                                     <button type="submit" class="btn btn-success btn-sm" name="action"
                                         value="approve">Approve</button>
@@ -55,7 +55,8 @@
                     </div>
                     <!-- Table View for Desktop -->
                     <div class="d-none d-md-block">
-                        <table class="table table-hover">
+                        <div class="table-responsive">
+                        <table class="table table-hover align-middle">
                             <thead>
                                 <tr>
                                     <th>Book Title</th>
@@ -68,8 +69,8 @@
                             </thead>
                             <tbody>
                                 {% for book in borrowed_books %}
-                                <tr class="student-row" data-toggle="modal"
-                                    data-target="#studentDetailsModal-{{ book.student.id }}">
+                                <tr class="student-row" data-bs-toggle="modal"
+                                    data-bs-target="#studentDetailsModal-{{ book.student.id }}">
                                     <td>{{ book.book.title }}</td>
                                     <td>{{ book.book.author }}</td>
                                     <td>{{ book.student.name }}</td>
@@ -77,7 +78,7 @@
                                     <td>{{ book.borrowed_date.strftime('%d-%m-%Y') }}</td>
                                     <td>
                                         <form method="POST" action="{{ url_for('lib.manage_checkouts') }}">
-                                            {{ form.csrf_token }}
+                                            {{ form.csrf_token if form else csrf_token() }}
                                             <input type="hidden" name="borrowed_book_id"
                                                 value="{{ book.id }}">
                                             <button type="submit" class="btn btn-success btn-sm" name="action"
@@ -90,6 +91,7 @@
                                 {% endfor %}
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -103,8 +105,8 @@
                     <!-- Card View for Mobile -->
                     <div class="d-block d-md-none">
                         {% for book in approved_books %}
-                        <div class="card student-card" data-toggle="modal"
-                            data-target="#studentDetailsModal-{{ book.id }}">
+                        <div class="card student-card" data-bs-toggle="modal"
+                            data-bs-target="#studentDetailsModal-{{ book.id }}">
                             <div class="card-body">
                                 <h5 class="card-title">{{ book.book.title }}</h5>
                                 <h6 class="card-subtitle mb-2 text-muted">{{ book.book_id.author }}</h6>
@@ -120,7 +122,8 @@
                     </div>
                     <!-- Table View for Desktop -->
                     <div class="d-none d-md-block">
-                        <table class="table table-hover">
+                        <div class="table-responsive">
+                        <table class="table table-hover align-middle">
                             <thead>
                                 <tr>
                                     <th>Book Title</th>
@@ -142,6 +145,7 @@
                                 {% endfor %}
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -155,8 +159,8 @@
                     <!-- Card View for Mobile -->
                     <div class="d-block d-md-none">
                         {% for book in rejected_checkouts %}
-                        <div class="card student-card" data-toggle="modal"
-                            data-target="#studentDetailsModal-{{ book.id }}">
+                        <div class="card student-card" data-bs-toggle="modal"
+                            data-bs-target="#studentDetailsModal-{{ book.id }}">
                             <div class="card-body">
                                 <h5 class="card-title">{{ book.book.title }}</h5>
                                 <h6 class="card-subtitle mb-2 text-muted">{{ book.book.author }}</h6>
@@ -172,7 +176,8 @@
                     </div>
                     <!-- Table View for Desktop -->
                     <div class="d-none d-md-block">
-                        <table class="table table-hover">
+                        <div class="table-responsive">
+                        <table class="table table-hover align-middle">
                             <thead>
                                 <tr>
                                     <th>Book Title</th>
@@ -194,6 +199,7 @@
                                 {% endfor %}
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -202,23 +208,21 @@
     <!-- Modals for Student Details -->
     <!-- Modals for each borrowed book -->
     {% for book in borrowed_books %}
-    <div class="modal fade" id="studentDetailsModal-{{ book.student.id }}" tabindex="-1" role="dialog" aria-labelledby="studentDetailsModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
+    <div class="modal fade" id="studentDetailsModal-{{ book.student.id }}" tabindex="-1" aria-labelledby="studentDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="studentDetailsModalLabel">{{ book.student.name }} ==> {{  book.book.title }}</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <!-- Tabs navigation -->
                     <ul class="nav nav-tabs" id="myTab" role="tablist">
                         <li class="nav-item">
-                            <a class="nav-link active" id="book-info-tab-{{ book.id }}" data-toggle="tab" href="#book-info-{{ book.id }}" role="tab" aria-controls="book-info-{{ book.id }}" aria-selected="true">Book Info</a>
+                            <a class="nav-link active" id="book-info-tab-{{ book.id }}" data-bs-toggle="tab" href="#book-info-{{ book.id }}" role="tab" aria-controls="book-info-{{ book.id }}" aria-selected="true">Book Info</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" id="student-info-tab-{{ book.student.id }}" data-toggle="tab" href="#student-info-{{ book.student.id }}" role="tab" aria-controls="student-info-{{ book.student.id }}" aria-selected="false">Student Info</a>
+                            <a class="nav-link" id="student-info-tab-{{ book.student.id }}" data-bs-toggle="tab" href="#student-info-{{ book.student.id }}" role="tab" aria-controls="student-info-{{ book.student.id }}" aria-selected="false">Student Info</a>
                         </li>
                     </ul>
                     
@@ -246,7 +250,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     <!-- Add buttons for additional actions if needed -->
                 </div>
             </div>

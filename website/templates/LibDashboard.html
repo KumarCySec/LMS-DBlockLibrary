@@ -1,292 +1,467 @@
 {% extends "LibrarianHome.html" %}
-
 {% block Main %}
-<main class="content px-4 py-5">
-    <div class="container-fluid">
+<main class="content px-3 px-md-4 py-5">
+  <div class="container-fluid">
 
-        <!-- Library Status (Top) -->
-        <div class="row mb-4 animate__animated animate__fadeInDown">
-            <div class="col-12">
-                <div class="card shadow-lg border-0 rounded-2 p-2 d-flex flex-row justify-content-between align-items-center bg-gradient-stat">
-                    <h5 class="text-body mb-0 fs-3">Library Status: 
-                        <span class="badge {{ 'bg-success' if library_status else 'bg-danger' }} fs-4">
-                            {{ 'Open' if library_status else 'Closed' }}
-                        </span>
-                    </h5>
-                    <form method="POST" action="{{ url_for('views.toggle_library_status') }}">
-                        <input type="hidden" name="status" value="{{ 0 if library_status else 1 }}">
-                        <button type="submit" class="btn {{ 'btn-danger' if library_status else 'btn-success' }} btn-lg shadow-lg rounded-pill px-1 py-1">
-                            Set as {{ 'Closed' if library_status else 'Open' }}
-                        </button>
-                    </form>
-                </div>
-            </div>
+    <!-- Library Status -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="status-card d-flex flex-column flex-md-row 
+                        justify-content-between align-items-center p-4 
+                        shadow-lg rounded-4">
+
+          <!-- Status Info -->
+          <div class="status-info text-center text-md-start mb-3 mb-md-0">
+            <h4 class="status-title mb-2">
+              Library Status:
+              <span id="statusBadge"
+                    class="badge status-badge {{ 'open' if library_status else 'closed' }}">
+                {{ 'OPEN' if library_status else 'CLOSED' }}
+              </span>
+            </h4>
+            <p id="nextOpenDisplay" class="small text-muted" hidden>
+              Next Opening: <strong id="nextOpenTime"></strong>
+            </p>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="status-action d-flex align-items-center">
+            {% if library_status %}
+            <button id="closeModalBtn"
+                    class="btn action-btn btn-closed d-inline-flex align-items-center">
+              <i class="fas fa-door-closed me-2"></i>
+              Set as Closed
+            </button>
+            {% else %}
+            <form method="POST" action="{{ url_for('views.toggle_library_status') }}">
+              {{ csrf_token() }}
+              <input type="hidden" name="status" value="1">
+              <button type="submit"
+                      class="btn action-btn btn-open d-inline-flex align-items-center">
+                <i class="fas fa-door-open me-2"></i>
+                Set as Open
+              </button>
+            </form>
+            {% endif %}
+          </div>
+
         </div>
-
-        <!-- Header -->
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 animate__animated animate__fadeInDown">
-            <div>
-                <h2 class="fw-bold text-gradient text-primary">Hello, Miss. {{ current_user.name }}</h2>
-                <p class="text-muted">Welcome back to your modern library dashboard!</p>
-            </div>
-            <img src="{{ url_for('static', filename='img/librarian.jpg') }}" alt="Librarian" class="rounded-circle shadow" style="max-width: 90px;">
-        </div>
-
-        <!-- Dashboard Stats -->
-        <div class="row mb-4 animate__animated animate__fadeInUp">
-            <div class="col-md-3 col-sm-6 mb-4">
-                <div class="card shadow-lg border-0 rounded-4 p-4 bg-gradient-stat">
-                    <div class="card-body">
-                        <h5 class="card-title text-body">Total Books</h5>
-                        <p class="fs-4 text-body">{{ total_available_books }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 col-sm-6 mb-4">
-                <div class="card shadow-lg border-0 rounded-4 p-4 bg-gradient-stat">
-                    <div class="card-body">
-                        <h5 class="card-title text-body">Total Volunteers</h5>
-                        <p class="fs-4 text-body">{{ total_volunteers }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 col-sm-6 mb-4">
-                <div class="card shadow-lg border-0 rounded-4 p-4 bg-gradient-stat">
-                    <div class="card-body">
-                        <h5 class="card-title text-body">Overdue Books</h5>
-                        <p class="fs-4 text-body">{{ total_overdue_books }}</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 col-sm-6 mb-4">
-                <div class="card shadow-lg border-0 rounded-4 p-4 bg-gradient-stat">
-                    <div class="card-body">
-                        <h5 class="card-title text-body">Verified Users</h5>
-                        <p class="fs-4 text-body">{{ total_verified_users }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Today’s Volunteers -->
-        <div class="card shadow-lg mb-4 animate__animated animate__fadeInUp">
-            <div class="card-body d-flex justify-content-between flex-column flex-md-row align-items-md-center gap-3">
-                <div>
-                    <h5 class="card-title mb-2">Today's In-Charge Volunteers ({{ today }})</h5>
-                    {% set today_assignment = weekly_assignment[today] if today in weekly_assignment else None %}
-                    {% if today_assignment %}
-                        <p class="mb-1"><strong>Volunteer 1:</strong> {{ today_assignment.volunteer1.name }} ({{ today_assignment.volunteer1.department }})</p>
-                        <p class="mb-0"><strong>Volunteer 2:</strong> {{ today_assignment.volunteer2.name }} ({{ today_assignment.volunteer2.department }})</p>
-                    {% else %}
-                        <p class="text-muted">No volunteers assigned for today.</p>
-                    {% endif %}
-                </div>
-                <button class="btn btn-primary rounded-pill px-4 py-2" data-bs-toggle="modal" data-bs-target="#editVolunteerModal">
-                    Edit Weekly Assignment
-                </button>
-            </div>
-        </div>
-
-        <!-- New Volunteer Assignment Modal -->
-        <div class="modal fade" id="editVolunteerModal" tabindex="-1" aria-labelledby="editVolunteerModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-lg">
-                <div class="modal-content rounded-4 shadow-lg">
-                    <form method="POST" action="{{ url_for('views.assign_weekly_volunteers') }}">
-                        <div class="modal-header border-0">
-                            <h5 class="modal-title fw-bold text-primary" id="editVolunteerModalLabel">
-                                Assign Volunteers to a Day
-                            </h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body py-4">
-                            <div class="mb-3">
-                                <label for="daySelector" class="form-label fw-semibold">Select Day</label>
-                                <select id="daySelector" name="selected_day" class="form-select shadow-sm" required>
-                                    <option value="" disabled selected>Select a day</option>
-                                    {% for day in weekdays %}
-                                        <option value="{{ day }}">{{ day }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div><!-- Department Filter in the Modal -->
-                            <select name="department" id="department" class="form-control mb-3">
-                                <option value="">Select Department</option>
-                                {% for dept in departments %}
-                                    <option value="{{ dept }}" {% if dept == selected_department %}selected{% endif %}>{{ dept }}</option>
-                                {% endfor %}
-                            </select>
-                            
-
-                            <div id="volunteerSelection" class="d-none">
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label for="volunteer1" class="form-label fw-semibold">Volunteer 1</label>
-                                        <select name="volunteer1_id" id="volunteer1" class="form-select shadow-sm" required>
-                                            <option value="" disabled selected>Select Volunteer 1</option>
-                                            {% for volunteer in volunteers %}
-                                                <option value="{{ volunteer.id }}">{{ volunteer.name }} ({{ volunteer.department }})</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="volunteer2" class="form-label fw-semibold">Volunteer 2</label>
-                                        <select name="volunteer2_id" id="volunteer2" class="form-select shadow-sm" required>
-                                            <option value="" disabled selected>Select Volunteer 2</option>
-                                            {% for volunteer in volunteers %}
-                                                <option value="{{ volunteer.id }}">{{ volunteer.name }} ({{ volunteer.department }})</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-footer border-0 d-flex justify-content-between align-items-center">
-                            <button type="submit" class="btn btn-primary px-4 rounded-pill shadow-sm">Save Assignment</button>
-                            <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cancel</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <script>
-            document.getElementById("daySelector").addEventListener("change", function () {
-                document.getElementById("volunteerSelection").classList.remove("d-none");
-            });
-        </script>
-
-        <!-- Checkout Register -->
-        <div class="card shadow-lg mb-4 animate__animated animate__fadeInUp">
-            <div class="card-body">
-                <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-3 gap-3">
-                    <h5 class="mb-0">Checkout Register</h5>
-                    <a href="{{ url_for('views.export_checkout_register_excel') }}" class="btn btn-outline-success shadow-sm">
-                        <i class="fas fa-file-excel me-1"></i> Export to Excel
-                    </a>
-                </div>
-
-                <!-- Search Filter -->
-                <form method="GET" class="row g-3 mb-4">
-                    <div class="col-md-4">
-                        <select name="department" class="form-select shadow-sm" onchange="this.form.submit()">
-                            <option value="">All Departments</option>
-                            {% for dept in departments %}
-                                <option value="{{ dept }}" {% if selected_department == dept %}selected{% endif %}>
-                                    {{ dept }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <select name="sort" class="form-select shadow-sm" onchange="this.form.submit()">
-                            <option value="">Sort By</option>
-                            <option value="due_asc" {% if selected_sort == 'due_asc' %}selected{% endif %}>
-                                Nearest Due Date
-                            </option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <input type="text" id="searchInput" class="form-control shadow-sm" placeholder="Search student or book">
-                    </div>
-                </form>
-
-                <!-- Table -->
-                <div class="table-responsive">
-                    <table id="checkoutTable" class="table table-bordered table-hover table-striped align-middle text-nowrap shadow-sm rounded-3">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>Student</th>
-                                <th>Roll No.</th>
-                                <th>Department</th>
-                                <th>Book</th>
-                                <th>Borrowed</th>
-                                <th>Due</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for entry in borrowed_books %}
-                            <tr class="hoverable">
-                                <td>{{ entry.student.name }}</td>
-                                <td>{{ entry.student.roll_number }}</td>
-                                <td>{{ entry.student.department }}</td>
-                                <td>{{ entry.book.title }}</td>
-                                <td>{{ entry.borrowed_date.strftime('%d-%m-%Y') }}</td>
-                                <td>{{ entry.due_date.strftime('%d-%m-%Y') }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
+      </div>
     </div>
+
+    <!-- Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4">
+      <div>
+        <h2 class="fw-bold text-body-emphasis" >Hello, Miss. {{ current_user.name }}</h2>
+        <p class="text-muted text-body-emphasis">Welcome back to your modern library dashboard!</p>
+      </div>
+      <img src="{{ url_for('static', filename='img/librarian.jpg') }}"
+           alt="Librarian" class="rounded-circle librarian-img">
+    </div>
+
+    <!-- Dashboard Stats -->
+    <div class="row mb-4">
+      {% for title, value in [
+        ('Total Books', total_available_books),
+        ('Total Volunteers', total_volunteers),
+        ('Overdue Books', overdue_books_count),
+        ('Verified Users', total_verified_users)
+      ] %}
+      <div class="col-6 col-md-3 mb-3">
+        <div class="stat-card p-4 shadow rounded">
+          <h5 class="mb-1">{{ title }}</h5>
+          <p class="h4 mb-0">{{ value }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Today’s In‑Charge Volunteers -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <h5 class="section-heading mb-3 text-body-emphasis">Today’s In‑Charge Volunteers ({{ today }})</h5>
+        {% set ta = weekly_assignment.get(today) %}
+        {% if ta %}
+        <div class="row g-3">
+          {% for vol, idx in [(ta.volunteer1,1),(ta.volunteer2,2)] %}
+          <div class="col-12 col-sm-6">
+            <div class="vol-card shadow rounded">
+              <button class="vol-header d-flex justify-content-between align-items-center w-100"
+                      data-bs-toggle="collapse"
+                      data-bs-target="#volBody{{ idx }}"
+                      aria-expanded="false"
+                      aria-controls="volBody{{ idx }}">
+                <div>
+                  <h6 class="mb-0">{{ vol.name }}</h6>
+                  <small class="text-muted">{{ vol.department }} • Year {{ vol.year }}</small>
+                </div>
+                <i class="fas fa-chevron-down"></i>
+              </button>
+              <div class="collapse p-3" id="volBody{{ idx }}">
+                <p class="mb-1"><strong>Mobile:</strong> {{ vol.mobile_number }}</p>
+                <p class="mb-0"><strong>Email:</strong> {{ vol.email }}</p>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted">No volunteers assigned for today.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Assign Volunteers Modal -->
+    <div class="modal fade" id="editVolunteerModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content rounded shadow">
+          <form method="POST" action="{{ url_for('views.assign_weekly_volunteers') }}">
+            {{ csrf_token() }}
+            <div class="modal-header border-0">
+              <h5 class="modal-title">Assign Volunteers to a Day</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label for="daySelector" class="form-label">Select Day</label>
+                <select id="daySelector" name="selected_day" class="form-select" required>
+                  <option value="" disabled selected>Choose a day</option>
+                  {% for day in weekdays %}
+                  <option value="{{ day }}">{{ day }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="department" class="form-label">Department</label>
+                <select id="department" name="department" class="form-select">
+                  <option value="">All</option>
+                  {% for dept in departments %}
+                  <option value="{{ dept }}"
+                    {% if dept == selected_department %}selected{% endif %}>
+                    {{ dept }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div id="volunteerSelection" class="d-none">
+                <div class="row g-3">
+                  <div class="col-12 col-md-6">
+                    <label for="volunteer1" class="form-label">Volunteer 1</label>
+                    <select id="volunteer1" name="volunteer1_id" class="form-select" required>
+                      <option value="" disabled selected>Select Volunteer</option>
+                      {% for v in volunteers %}
+                      <option value="{{ v.id }}">{{ v.name }} ({{ v.department }})</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label for="volunteer2" class="form-label">Volunteer 2</label>
+                    <select id="volunteer2" name="volunteer2_id" class="form-select" required>
+                      <option value="" disabled selected>Select Volunteer</option>
+                      {% for v in volunteers %}
+                      <option value="{{ v.id }}">{{ v.name }} ({{ v.department }})</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer border-0">
+              <button type="submit" class="btn btn-primary px-4">Save</button>
+              <button type="button" class="btn btn-outline-secondary"
+                      data-bs-dismiss="modal">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Checkout Register -->
+    <div class="card mb-4 shadow">
+      <div class="card-body">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-3">
+          <h5 class="mb-0 text-body-emphasis">Checkout Register</h5>
+          <a href="{{ url_for('views.export_checkout_register_excel') }}"
+             class="btn btn-outline-success">
+            <i class="fas fa-file-excel me-1"></i> Export to Excel
+          </a>
+        </div>
+        <form method="GET" class="row g-2 mb-3">
+          <div class="col-12 col-md-4">
+            <select name="department" class="form-select" onchange="this.form.submit();">
+              <option value="">All Departments</option>
+              {% for dept in departments %}
+              <option value="{{ dept }}"
+                {% if dept == selected_department %}selected{% endif %}>
+                {{ dept }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <select name="sort" class="form-select" onchange="this.form.submit();">
+              <option value="">Sort By</option>
+              <option value="due_asc" {% if selected_sort=='due_asc' %}selected{% endif %}>
+                Nearest Due Date
+              </option>
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <input type="search" id="searchInput" class="form-control"
+                   placeholder="Search student or book">
+          </div>
+        </form>
+        <div class="table-responsive">
+          <table id="checkoutTable" class="table table-striped align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th>Student</th><th>Roll No.</th><th>Department</th>
+                <th>Book</th><th>Borrowed</th><th>Due</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for e in borrowed_books %}
+              <tr>
+                <td>{{ e.student.name }}</td>
+                <td>{{ e.student.roll_number }}</td>
+                <td>{{ e.student.department }}</td>
+                <td>{{ e.book.title }}</td>
+                <td>{{ e.borrowed_date.strftime('%d-%m-%Y') }}</td>
+                <td>
+                  <span class="badge bg-warning text-dark">{{ e.due_date.strftime('%d-%m-%Y') }}</span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
 </main>
 
-<!-- Live Search -->
-<script>
-    document.getElementById('searchInput').addEventListener('keyup', function () {
-        let filter = this.value.toLowerCase();
-        let rows = document.querySelectorAll("#checkoutTable tbody tr");
-        rows.forEach(row => {
-            row.style.display = row.innerText.toLowerCase().includes(filter) ? '' : 'none';
-        });
-    });
-</script>
 
-{% endblock %}
+<!-- Close Modal -->
+<div class="modal fade" id="closeModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form id="closeForm" class="modal-content p-4 rounded shadow"
+          method="POST" action="{{ url_for('views.toggle_library_status') }}">
+      {{ csrf_token() }}
+      <h5 class="mb-3 text-body-emphasis">Schedule Next Opening</h5>
+      <input type="hidden" name="status" value="0">
+      <div class="mb-3">
+        <label for="nextOpenInput" class="form-label text-body-emphasis">Next Opening Date &amp; Time</label>
+        <input type="datetime-local" id="nextOpenInput" name="next_open_dt"
+               class="form-control" required>
+      </div>
+      <div class="text-end">
+        <button type="button" class="btn btn-outline-secondary me-2"
+                data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-danger">Confirm Close</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-<!-- Custom Styles -->
+<!-- Data container and JS link -->
+<div id="dashboard-data" 
+     data-is-open="{{ library_status | lower }}" 
+     hidden aria-hidden="true"></div>
+<script src="{{ url_for('static', filename='js/librarian-dashboard.js') }}"></script>
+
+
+
+<!-- Styles -->
 <style>
-    .text-gradient {
-        background: linear-gradient(90deg, rgba(85, 183, 255, 1) 0%, rgba(0, 204, 255, 1) 100%);
-        -webkit-background-clip: text;
-        color: transparent;
-    }
+:root {
+  --gradient-start: #5A8DEE;
+  --gradient-end:   #3B71CA;
+  --overlay: rgba(0,0,0,0.25);
 
-    .bg-gradient-stat {
-        background: linear-gradient(145deg, #6a5acd, #836fff);
-        color: white;
-    }
+  --text-primary: #212529;
+  --text-muted:   #6c757d;
 
-    .accordion-button {
-        transition: background-color 0.3s ease;
-    }
+  --open-green: #28a745;
+  --close-red:  #dc3545;
+  :root {
+    --bs-body-bg: #fff;
+    --bs-body-color: #212529;
+  }
 
-    .accordion-button:not(.collapsed) {
-        background-color: #f8f9fa !important;
-    }
+  [data-bs-theme="dark"] {
+    --bs-body-bg: #121212;
+    --bs-body-color: #f8f9fa;
+  }
 
-    .btn {
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
+  .text-body-emphasis {
+    color: var(--bs-body-color) !important;
+  }
 
-    .btn:hover {
-        transform: scale(1.05);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    }
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --overlay: rgba(0,0,0,0.6);
+    --text-primary: #f8f9fc;
+    --text-muted:   #adb5bd;
+    --light-bg: #212529;
+    --dark-bg:  #f8f9fa;
+  }
+}
+/* GENERAL TEXT COLORS */
+body {
+  background: var(--light-bg);
+  color: var(--text-primary);
+}
 
-    .table-hover tbody tr:hover {
-        background-color: rgba(0, 123, 255, 0.1);
-        cursor: pointer;
-    }
+.content h2,
+.content h4,
+.content h5,
+.content p,
+.content small,
+.content .table {
+  color: var(--text-primary) !important;
+}
 
-    .hoverable:hover {
-        background-color: #f1f1f1;
-        box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
-    }
+/* STATUS CARD */
+.status-card {
+  background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+  position: relative;
+  overflow: hidden;
+  color: var(--text-primary);
+  backdrop-filter: blur(6px);
+}
 
-    @media (max-width: 767px) {
-        .table th, .table td {
-            padding: 0.6rem;
-            font-size: 0.9rem;
-        }
+.status-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--overlay);
+}
 
-        .card-body {
-            padding: 1.5rem;
-        }
+.status-card > * {
+  position: relative;
+  z-index: 1;
+}
 
-        .col-md-3.col-sm-6.mb-4 {
-            width: 100%;
-        }
-    }
+.status-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.status-badge {
+  padding: 0.35rem 0.9rem;
+  border-radius: 50px;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.status-badge.open {
+  background: var(--open-green);
+}
+
+.status-badge.closed {
+  background: var(--close-red);
+}
+
+.status-action {
+  min-width: 200px;
+}
+
+.action-btn {
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 0.65rem 1.2rem;
+  border-radius: 50px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.btn-closed {
+  background: var(--close-red);
+  color: #fff;
+}
+
+.btn-open {
+  background: var(--open-green);
+  color: #fff;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* IMAGE */
+.librarian-img {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+}
+
+/* STATS */
+.stat-card {
+  background: linear-gradient(145deg, #6a5acd, #836fff);
+  color: var(--text-primary);
+  text-align: center;
+}
+
+/* VOL CARDS */
+.vol-card {
+  overflow: hidden;
+}
+
+.vol-header {
+  background: var(--gradient-start);
+  color: #fff;
+  padding: 0.75rem 1rem;
+  border: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.vol-card .collapse {
+  background: var(--light-bg);
+}
+
+/* TABLE */
+.table-responsive {
+  overflow-x: auto;
+}
+
+.table thead th {
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+/* MOBILE */
+@media (max-width: 576px) {
+  .status-card {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .status-action {
+    margin-top: 1rem;
+  }
+
+  .action-btn {
+    font-size: 0.9rem;
+    padding: 0.65rem 1rem;
+  }
+
+  .librarian-img {
+    width: 70px;
+    height: 70px;
+  }
+
+  .stat-card {
+    padding: 1.5rem 1rem;
+  }
+}
+
 </style>
+{% endblock %}

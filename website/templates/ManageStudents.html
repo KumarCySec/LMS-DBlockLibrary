@@ -6,9 +6,9 @@
     <title>Manage Students</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <!-- Add viewport meta tag for responsiveness -->
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap CSS (v5) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 </head>
 
 <body>
@@ -21,15 +21,15 @@
         <!-- Tab Navigation for Mobile View -->
         <ul class="nav nav-tabs nav-justified flex-column flex-md-row" id="studentTab" role="tablist">
             <li class="nav-item">
-                <a class="nav-link" id="unverified-tab" data-toggle="tab" href="#unverified" role="tab"
+                <a class="nav-link" id="unverified-tab" data-bs-toggle="tab" href="#unverified" role="tab"
                     aria-controls="unverified" aria-selected="false">Unverified Students</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link active" id="verified-tab" data-toggle="tab" href="#verified" role="tab"
+                <a class="nav-link active" id="verified-tab" data-bs-toggle="tab" href="#verified" role="tab"
                     aria-controls="verified" aria-selected="true">Verified Students</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" id="rejected-tab" data-toggle="tab" href="#rejected" role="tab"
+                <a class="nav-link" id="rejected-tab" data-bs-toggle="tab" href="#rejected" role="tab"
                     aria-controls="rejected" aria-selected="false">Rejected Students</a>
             </li>
         </ul>
@@ -45,8 +45,8 @@
                         <!-- Card View for Mobile -->
                         <div class="d-block d-md-none">
                             {% for student in verified_students %}
-                            <div class="card student-card" data-toggle="modal"
-                                data-target="#studentDetailsModal-{{ student.id }}">
+                            <div class="card student-card" data-bs-toggle="modal"
+                                data-bs-target="#studentDetailsModal-{{ student.id }}">
                                 <div class="card-body">
                                     <h5 class="card-title">{{ student.name }}</h5>
                                     <p class="card-text">
@@ -56,7 +56,7 @@
                                     </p>
                                     <form method="POST" action="{{ url_for('lib.manage_students') }}"
                                         style="display:inline;">
-                                        {{ form.csrf_token }}
+                                        {{ form.csrf_token if form else csrf_token() }}
                                         <input type="hidden" name="student_id" value="{{ student.id }}">
                                         {% if student.role == 'Student' %}
                                         <button type="submit" class="btn btn-info btn-sm" name="action"
@@ -67,7 +67,7 @@
                                     </form>
                                     <form method="POST" action="{{ url_for('lib.manage_students') }}"
                                         style="display:inline;">
-                                        {{ form.csrf_token }}
+                                        {{ form.csrf_token if form else csrf_token() }}
                                         <input type="hidden" name="student_id" value="{{ student.id }}">
                                         <button type="submit" class="btn btn-danger btn-sm" name="action"
                                             value="deverify">Deverify</button>
@@ -78,7 +78,8 @@
                         </div>
                         <!-- Table View for Desktop -->
                         <div class="d-none d-md-block">
-                            <table class="table table-hover">
+                            <div class="table-responsive">
+                            <table class="table table-hover align-middle">
                                 <thead>
                                     <tr>
                                         <th>S.no.</th>
@@ -91,8 +92,8 @@
                                 </thead>
                                 <tbody>
                                     {% for student in verified_students %}
-                                    <tr class="student-row" data-toggle="modal"
-                                        data-target="#studentDetailsModal-{{ student.id }}">
+                                    <tr class="student-row" data-bs-toggle="modal"
+                                        data-bs-target="#studentDetailsModal-{{ student.id }}">
                                         <td>{{ loop.index }}</td>
                                         <td>{{ student.name }}</td>
                                         <td>{{ student.roll_number }}</td>
@@ -101,7 +102,7 @@
                                         <td>
                                             <form method="POST" action="{{ url_for('lib.manage_students') }}"
                                             style="display:inline;">
-                                            {{ form.csrf_token }}
+                                            {{ form.csrf_token if form else csrf_token() }}
                                             <input type="hidden" name="student_id" value="{{ student.id }}">
                                             {% if student.role == 'Student' %}
                                             <button type="submit" class="btn btn-info btn-sm" name="action"
@@ -115,7 +116,7 @@
                                         </form>
                                             <form method="POST" action="{{ url_for('lib.manage_students') }}"
                                                 style="display:inline;">
-                                                {{ form.csrf_token }}
+                                                {{ form.csrf_token if form else csrf_token() }}
                                                 <input type="hidden" name="student_id" value="{{ student.id }}">
                                                 <button type="submit" class="btn btn-danger btn-sm" name="action"
                                                     value="deverify"
@@ -126,6 +127,7 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -140,8 +142,8 @@
                         <!-- Card View for Mobile -->
                         <div class="d-block d-md-none">
                             {% for student in unverified_students %}
-                            <div class="card student-card" data-toggle="modal"
-                                data-target="#studentDetailsModal-{{ student.id }}">
+                            <div class="card student-card" data-bs-toggle="modal"
+                                data-bs-target="#studentDetailsModal-{{ student.id }}">
                                 <div class="card-body">
                                     <h5 class="card-title">{{ student.name }}</h5>
                                     <p class="card-text">
@@ -149,7 +151,7 @@
                                         <strong>Email:</strong> {{ student.email }}
                                     </p>
                                     <form method="POST" action="{{ url_for('lib.manage_students') }}">
-                                        {{ form.csrf_token }}
+                                        {{ form.csrf_token if form else csrf_token() }}
                                         <input type="hidden" name="student_id" value="{{ student.id }}">
                                         <button type="submit" class="btn btn-success btn-sm" name="action"
                                             value="verify">Verify</button>
@@ -163,7 +165,8 @@
 
                         <!-- Table View for Desktop -->
                         <div class="d-none d-md-block">
-                            <table class="table table-hover">
+                            <div class="table-responsive">
+                            <table class="table table-hover align-middle">
                                 <thead>
                                     <tr>
                                         <th>S.no.</th>
@@ -175,15 +178,15 @@
                                 </thead>
                                 <tbody>
                                     {% for student in unverified_students %}
-                                    <tr class="student-row" data-toggle="modal"
-                                        data-target="#studentDetailsModal-{{ student.id }}">
+                                    <tr class="student-row" data-bs-toggle="modal"
+                                        data-bs-target="#studentDetailsModal-{{ student.id }}">
                                         <td>{{ loop.index }}</td>
                                         <td>{{ student.name }}</td>
                                         <td>{{ student.roll_number }}</td>
                                         <td>{{ student.email }}</td>
                                         <td>
                                             <form method="POST" action="{{ url_for('lib.manage_students') }}">
-                                                {{ form.csrf_token }}
+                                                {{ form.csrf_token if form else csrf_token() }}
                                                 <input type="hidden" name="student_id" value="{{ student.id }}">
                                                 <button type="submit" class="btn btn-success btn-sm" name="action"
                                                     value="verify"
@@ -197,6 +200,7 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -210,7 +214,7 @@
 
                         <!-- Delete All Rejected Button -->
                         <form method="POST" action="{{ url_for('lib.manage_students') }}" class="mb-3">
-                            {{ form.csrf_token }}
+                            {{ form.csrf_token if form else csrf_token() }}
                             <button type="submit" class="btn btn-danger" name="action"
                                 value="delete_all_rejected">Delete All Rejected</button>
                         </form>
@@ -218,8 +222,8 @@
                         <!-- Card View for Mobile -->
                         <div class="d-block d-md-none">
                             {% for student in rejected_students %}
-                            <div class="card student-card" data-toggle="modal"
-                                data-target="#studentDetailsModal-{{ student.id }}">
+                            <div class="card student-card" data-bs-toggle="modal"
+                                data-bs-target="#studentDetailsModal-{{ student.id }}">
                                 <div class="card-body">
                                     <h5 class="card-title">{{ student.name }}</h5>
                                     <p class="card-text">
@@ -227,7 +231,7 @@
                                         <strong>Email:</strong> {{ student.email }}
                                     </p>
                                     <form method="POST" action="{{ url_for('lib.manage_students') }}">
-                                        {{ form.csrf_token }}
+                                        {{ form.csrf_token if form else csrf_token() }}
                                         <input type="hidden" name="student_id" value="{{ student.id }}">
                                         <button type="submit" class="btn btn-danger btn-sm" name="action"
                                             value="delete">Delete</button>
@@ -239,7 +243,8 @@
 
                         <!-- Table View for Desktop -->
                         <div class="d-none d-md-block">
-                            <table class="table table-hover">
+                            <div class="table-responsive">
+                            <table class="table table-hover align-middle">
                                 <thead>
                                     <tr>
                                         <th>S.no.</th>
@@ -251,15 +256,15 @@
                                 </thead>
                                 <tbody>
                                     {% for student in rejected_students %}
-                                    <tr class="student-row" data-toggle="modal"
-                                        data-target="#studentDetailsModal-{{ student.id }}">
+                                    <tr class="student-row" data-bs-toggle="modal"
+                                        data-bs-target="#studentDetailsModal-{{ student.id }}">
                                         <td>{{ loop.index }}</td>
                                         <td>{{ student.name }}</td>
                                         <td>{{ student.roll_number }}</td>
                                         <td>{{ student.email }}</td>
                                         <td>
                                             <form method="POST" action="{{ url_for('lib.manage_students') }}">
-                                                {{ form.csrf_token }}
+                                                {{ form.csrf_token if form else csrf_token() }}
                                                 <input type="hidden" name="student_id" value="{{ student.id }}">
                                                 <button type="submit" class="btn btn-danger btn-sm" name="action"
                                                     value="delete"
@@ -270,6 +275,7 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -278,16 +284,13 @@
 
         <!-- Modal for Student Details -->
         {% for student in verified_students + unverified_students %}
-        <div class="modal fade" id="studentDetailsModal-{{ student.id }}" tabindex="-1" role="dialog"
-            aria-labelledby="studentDetailsModalLabel-{{ student.id }}" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal fade" id="studentDetailsModal-{{ student.id }}" tabindex="-1" aria-labelledby="studentDetailsModalLabel-{{ student.id }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="studentDetailsModalLabel-{{ student.id }}">{{ student.name }}
                             Details</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         <p><strong>Name:</strong> {{ student.name }}</p>
@@ -299,7 +302,7 @@
 
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     </div>
                 </div>
             </div>
@@ -321,88 +324,15 @@
     {% endblock %}
 
     {% block Booksscripts %}
-    <!-- Ensure jQuery is included before Bootstrap JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
-
     <script>
-        $(document).ready(function () {
-            // Hide dashboard content and display manage students content
-            var dashboardContent = $('#dashboardcontent');
-            var manageStudentsContent = $('#manageStudentsContent');
-
-            if (dashboardContent.length && manageStudentsContent.length) {
-                dashboardContent.hide();
-                manageStudentsContent.show();
-            }
-
-            // Filter functionality
-            $('.filter-btn').on('click', function () {
-                var role = $(this).data('role');
-                $('.student-card').each(function () {
-                    if (role === 'all' || $(this).data('role') === role) {
-                        $(this).show();
-                    } else {
-                        $(this).hide();
-                    }
-                });
-            });
-
-            // Handle click on student card to show modal (for mobile)
-            $('.student-card').on('click', function () {
-                var targetModal = $(this).data('target');
-                $(targetModal).modal('show');
-            });
-
-            // Handle click on student row to show modal (for desktop)
-            $('.student-row').on('click', function () {
-                var targetModal = $(this).data('target');
-                $(targetModal).modal('show');
-            });
-
-            // Prevent modal from showing when action buttons are clicked
-            $('form button').on('click', function (event) {
-                event.stopPropagation();
-            });
-
-            // Ensure modal close button works
-            $('.close, .btn-secondary').on('click', function () {
-                $('.modal').modal('hide');
-            });
-
-            // Fix for unverified tab not switching
-            $('#unverified-tab').on('click', function (e) {
-                e.preventDefault();
-                $(this).tab('show');
-                $('#verified').removeClass('show active');
-                $('#rejected').removeClass('show active');
-                $('#unverified').addClass('show active');
-            });
-
-            // Fix for verified tab switching back
-            $('#verified-tab').on('click', function (e) {
-                e.preventDefault();
-                $(this).tab('show');
-                $('#unverified').removeClass('show active');
-                $('#rejected').removeClass('show active');
-                $('#verified').addClass('show active');
-            });
-
-            // Fix for rejected tab switching back
-            $('#rejected-tab').on('click', function (e) {
-                e.preventDefault();
-                $(this).tab('show');
-                $('#unverified').removeClass('show active');
-                $('#verified').removeClass('show active');
-                $('#rejected').addClass('show active');
-            });
-
-            // Fix for modal backdrop not closing
-            $('.modal').on('hidden.bs.modal', function () {
-                $(this).removeClass('show');
-                $('.modal-backdrop').remove();
-            });
-        });
+      document.addEventListener('DOMContentLoaded', function(){
+        const dashboardContent = document.getElementById('dashboardcontent');
+        const manageStudentsContent = document.getElementById('manageStudentsContent');
+        if (dashboardContent && manageStudentsContent) {
+          dashboardContent.style.display = 'none';
+          manageStudentsContent.style.display = 'block';
+        }
+      });
     </script>
     {% endblock %}
 </body>

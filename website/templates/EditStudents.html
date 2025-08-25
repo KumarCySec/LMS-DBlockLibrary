@@ -69,6 +69,7 @@
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content">
                             <form method="POST" action="{{ url_for('lib.EditStudentsDetails') }}">
+                                {{ csrf_token() }}
                                 <div class="modal-header bg-primary text-white">
                                     <h5 class="modal-title">Edit Student</h5>
                                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -118,6 +119,7 @@
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content">
                             <form method="POST" action="{{ url_for('lib.EditStudentsDetails') }}">
+                                {{ csrf_token() }}
                                 <div class="modal-header bg-danger text-white">
                                     <h5 class="modal-title">Delete Student</h5>
                                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>

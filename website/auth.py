@@ -4,30 +4,31 @@ from .models import User
 from . import db
 from flask_login import login_user, logout_user, login_required, current_user
 from datetime import datetime
+from .constants import DEPARTMENTS_MAP
+from flask_wtf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 auth = Blueprint('auth', __name__)
 
-DEPARTMENTS = {
-    "ECE": "ECE",
-    "EEE": "EEE",
-    "CSE": "CSE",
-    "IMT": "IT",
-    "ATE": "AUTO",
-    "MCE": "MECH",
-    "CVE": "CIVIL"
-}
+# Rate limiter setup (initialized lazily when app available)
+limiter = Limiter(key_func=get_remote_address, default_limits=[])
+
+DEPARTMENTS = DEPARTMENTS_MAP
 @auth.route('/', methods=['GET', 'POST'])
 @auth.route('/login', methods=['GET', 'POST'])  
+# Simple rate limit to reduce brute force
+@limiter.limit("10 per minute")
 def auth_page():
     if request.method == 'POST':
-        print("Form submitted!")  # Debug statement
+        # print removed in favor of logging
         action = request.form.get('action')
         if action == 'Login':
             return handle_login(request.form)
         elif action == 'Sign up':
             return handle_signup(request.form)
 
-    return render_template("login.html", user=current_user)
+    return render_template("login.html")
 
 def handle_login(form):
     session.permanent = True
@@ -38,22 +39,18 @@ def handle_login(form):
     if user:
         if user.rejected_at and (datetime.utcnow() - user.rejected_at).days < 7:
             flash('You are rejected. Try after a week or contact the librarian.', category='error')
-            print('You are rejected. Try after a week or contact the librarian.')
             return redirect(url_for('auth.auth_page'))
         elif check_password_hash(user.password, password):
             if not user.is_verified:
                 flash('Your library account is being verified. Please await approval. Thank you!', category='error')
-                print('Your library account is being verified. Please await approval. Thank you!')
             else:
                 login_user(user, remember=True)
                 session["USER"] = user.name
                 return redirect(url_for('views.home'))
         else:
             flash('Incorrect password, try again.', category='error')
-            print('Incorrect password, try again.')
     else:
         flash('Email (or) Roll Number does not exist.', category='error')
-        print('Email (or) Roll Number does not exist.')
     
     return redirect(url_for('auth.auth_page'))
 
@@ -102,34 +99,26 @@ def handle_signup(form):
     user = User.query.filter_by(email=email).first()
     if not (name and email and password and confirm_password):
         flash('All fields are required.', category='error')
-        print('All fields are required.')
     elif user:
         flash('Email already exists.', category='error')
-        print('Email already exists.')
     elif len(name) < 2:
         flash('First name must be greater than 1 character.', category='error')
-        print('First name must be greater than 1 character.')
     elif len(email) < 4:
         flash('Email must be greater than 3 characters.', category='error')
-        print('Email must be greater than 3 characters.')
     elif len(password) < 8:
         flash('Password must be at least 8 characters.', category='error')
-        print('Password must be at least 8 characters.')
     elif password != confirm_password:
         flash('Passwords do not match.', category='error')
-        print('Passwords do not match.')
     elif role not in ['Student', 'Librarian']:
         flash('Invalid role selection.', category='error')
-        print('Invalid role selection.')
 
     else:
-        new_user = User(email=email, name=name, password=generate_password_hash(password, method='pbkdf2:sha256'),mobilenumber=mobile_number,
+        new_user = User(email=email, name=name, password=generate_password_hash(password, method='pbkdf2:sha256'),phone_number=mobile_number,
                         roll_number=roll_number, department=department,
                         year_of_graduation=year_of_graduation, role=role)
         db.session.add(new_user)
         db.session.commit()
         flash('Account created successfully. You can login once you get verified', category='success')
-        print('Account created successfully.')
         return redirect(url_for('auth.auth_page'))
     
     return redirect(url_for('auth.auth_page'))

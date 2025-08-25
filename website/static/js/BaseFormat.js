@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const sidebarToggle = document.querySelector("#sidebar-toggle");
     const sidebar = document.querySelector("#sidebar");
     const themeToggle = document.getElementById('themeToggle');
+    const toastEls = document.querySelectorAll('.toast');
 
     // Ensure elements exist before adding event listeners
     if (sidebarToggle && sidebar) {
@@ -21,6 +22,18 @@ document.addEventListener("DOMContentLoaded", function () {
         // Toggle theme on switch change
         themeToggle.addEventListener('change', function () {
             toggleTheme();
+        });
+    }
+
+    // Initialize Bootstrap 5 toasts (flash messages)
+    if (toastEls && toastEls.length) {
+        toastEls.forEach(el => {
+            try {
+                const t = bootstrap.Toast.getOrCreateInstance(el, { delay: 5000, autohide: true });
+                t.show();
+            } catch (e) {
+                // no-op if bootstrap not loaded yet
+            }
         });
     }
 });

@@ -44,10 +44,12 @@ document.addEventListener("DOMContentLoaded", function() {
     setTimeout(() => {
       alert.style.display = "none";
     }, 5000);
-    const closeBtn = alert.querySelector(".close-btn");
-    closeBtn.addEventListener("click", () => {
-      alert.style.display = "none";
-    });
+    const closeBtn = alert.querySelector(".close-btn, .btn-close");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => {
+        alert.style.display = "none";
+      });
+    }
   });
 });
 

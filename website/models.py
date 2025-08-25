@@ -1,6 +1,6 @@
 from website import db
 from datetime import datetime,timezone
-from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean
+from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Boolean, Index
 from sqlalchemy.orm import relationship
 from flask_login import UserMixin
 
@@ -8,14 +8,14 @@ class User(db.Model, UserMixin):
     __tablename__ = 'user'
 
     id = Column(Integer, primary_key=True)
-    email = Column(String(150), unique=True, nullable=False)
-    role = Column(String(50), nullable=False)  
+    email = Column(String(150), unique=True, nullable=False, index=True)
+    role = Column(String(50), nullable=False, index=True)  
     password = Column(String(150), nullable=False)
     name = Column(String(150), nullable=False)
-    roll_number = Column(Integer, unique=True, nullable=True)
+    roll_number = Column(String(20), unique=True, nullable=True, index=True)
     phone_number = Column(String(20), nullable=True)
-    department = Column(String(150), nullable=True)
-    year_of_graduation = Column(Integer, nullable=True)
+    department = Column(String(150), nullable=True, index=True)
+    year_of_graduation = Column(Integer, nullable=True, index=True)
     is_verified = Column(Boolean, default=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=True)
     verified_at = Column(DateTime, nullable=True)
@@ -35,12 +35,12 @@ class Book(db.Model):
 
     id = Column(Integer, primary_key=True)
     student_id = Column(Integer, ForeignKey('user.id'), nullable=True)
-    title = Column(String(150), nullable=False)
-    author = Column(String(150), nullable=False)
-    isbn = Column(String(20), nullable=True)
+    title = Column(String(150), nullable=False, index=True)
+    author = Column(String(150), nullable=False, index=True)
+    isbn = Column(String(20), nullable=True, index=True)
     published_date = Column(DateTime, nullable=True)
     quantity = Column(Integer, default=0, nullable=False)
-    language = Column(String(20), nullable=False)
+    language = Column(String(20), nullable=False, index=True)
     date_of_donation = Column(DateTime, nullable=False)
     donor_id = Column(Integer, ForeignKey('donor.id'), nullable=True)
     added_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -61,8 +61,9 @@ class BorrowedBook(db.Model):
     book_id = Column(Integer, ForeignKey('book.id'), nullable=False)
     borrowed_date = Column(DateTime, default=datetime.now, nullable=False)
     due_date = Column(DateTime, nullable=False)
-    is_verified = db.Column(db.Boolean, default=False)  # New field to track verification status
+    is_verified = db.Column(db.Boolean, default=False)
     rejected_at = Column(DateTime, nullable=True)
+    status = Column(String(20), default='borrowed', index=True)  # borrowed, returned, renewed
 
     student = relationship('User', back_populates='borrowed_books')
     book = relationship('Book', back_populates='borrowed_by')
@@ -75,9 +76,9 @@ class Donor(db.Model):
     __tablename__ = 'donor'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(150), nullable=False)
-    department = Column(String(150), nullable=False)
-    year_of_graduation = Column(Integer, nullable=False)
+    name = Column(String(150), nullable=False, index=True)
+    department = Column(String(150), nullable=False, index=True)
+    year_of_graduation = Column(Integer, nullable=False, index=True)
     mobilenumber = Column(String(20), nullable=True)
     email = Column(String(150), nullable=True)
     address = Column(String(1000), nullable=True)
@@ -119,3 +120,16 @@ class LibraryStatus(db.Model):
 
     def __repr__(self):
         return f"<LibraryStatus(id={self.id}, is_open={self.is_open}, updated_at={self.updated_at})>"
+
+
+class CheckoutHistory(db.Model):
+    __tablename__ = 'checkout_history'
+
+    id = Column(Integer, primary_key=True)
+    borrowed_book_id = Column(Integer, ForeignKey('borrowed_books.id'), nullable=False, index=True)
+    student_id = Column(Integer, ForeignKey('user.id'), nullable=False, index=True)
+    book_id = Column(Integer, ForeignKey('book.id'), nullable=False, index=True)
+    action = Column(String(20), nullable=False)  # borrow, return, renew
+    action_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    borrowed_book = relationship('BorrowedBook')

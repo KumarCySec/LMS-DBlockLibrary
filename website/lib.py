@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for
 from flask_login import login_required, current_user
 from sqlalchemy import or_, distinct
 from datetime import datetime, timedelta,date
-from .models import Book, User, Donor,BorrowedBook, VolunteerAssignment
+from .models import Book, User, Donor,BorrowedBook, VolunteerAssignment, CheckoutHistory
 from . import db
 from werkzeug.security import generate_password_hash, check_password_hash
 import logging
@@ -13,7 +13,7 @@ lib = Blueprint('lib', __name__)
 
 def role_required_volunteer_librarian():
     """Restrict access to volunteers and librarian only."""
-    if current_user.role.lower() not in ["volunteer", "librarian"]:
+    if (current_user.role or '').lower() not in ["volunteer", "librarian"]:
         flash("Unauthorized access.", "danger")
         logger.warning(f"[SECURITY] Unauthorized access attempt by {current_user.email}")
         return redirect(url_for("views.home"))
@@ -181,13 +181,13 @@ def EditStudentsDetails():
 
                 db.session.commit()
                 flash('✅ Student details updated successfully.', 'success')
-                print(f"🟢 [DEBUG] Updated Student ID: {student_id} - {student.name}")
+                logger.info(f"Updated Student ID: {student_id} - {student.name}")
 
             elif action == 'delete':
                 db.session.delete(student)
                 db.session.commit()
                 flash('❌ Student deleted successfully.', 'success')
-                print(f"🟢 [DEBUG] Deleted Student ID: {student_id} - {student.name}")
+                logger.info(f"Deleted Student ID: {student_id} - {student.name}")
 
         # Handling GET request (Search, Filter, Pagination)
         page = request.args.get('page', 1, type=int)
@@ -202,15 +202,15 @@ def EditStudentsDetails():
                 User.name.ilike(f"%{search_query}%") | 
                 User.roll_number.ilike(f"%{search_query}%")
             )
-            print(f"🟢 [DEBUG] Search Query: {search_query}")
+            logger.debug(f"Search Query: {search_query}")
 
         if dept_filter:
             query = query.filter(User.department == dept_filter)
-            print(f"🟢 [DEBUG] Department Filter: {dept_filter}")
+            logger.debug(f"Department Filter: {dept_filter}")
 
         query = query.order_by(User.name.asc())
         students = query.paginate(page=page, per_page=per_page)
-        print(f"🟢 [DEBUG] Total Students Found: {students.total}")
+        logger.debug(f"Total Students Found: {students.total}")
 
         return render_template(
             'EditStudents.html',
@@ -222,7 +222,7 @@ def EditStudentsDetails():
 
     except Exception as e:
         flash(f"🚨 Error: {str(e)}", "error")
-        print(f"🔴 [ERROR] {str(e)}")
+        logger.exception("EditStudentsDetails failed")
         return redirect(url_for('lib.EditStudentsDetails'))
 
 
@@ -413,19 +413,27 @@ def manage_checkouts():
                     if action == 'approve':
                         # Update borrowed book status to approved
                         borrowed_book.is_verified = True
+                        borrowed_book.status = 'borrowed'
+                        history = CheckoutHistory(
+                            borrowed_book_id=borrowed_book.id,
+                            student_id=borrowed_book.student_id,
+                            book_id=borrowed_book.book_id,
+                            action='borrow')
+                        db.session.add(history)
                         db.session.commit()
                         flash(f'Approved checkout for {borrowed_book.student.name}', 'success')
-                        print(f'Approved checkout for {borrowed_book.student.name}', 'success')
+                        logger.info(f'Approved checkout for {borrowed_book.student.name}')
                     elif action == 'reject':
                         # Update borrowed book status to rejected
                         borrowed_book.rejected_at = datetime.utcnow()
+                        borrowed_book.status = 'rejected'
                         db.session.commit()
                         flash(f'Rejected checkout for {borrowed_book.student.name}', 'success')
-                        print(f'Rejected checkout for {borrowed_book.student.name}', 'success')
+                        logger.info(f'Rejected checkout for {borrowed_book.student.name}')
             except Exception as e:
                 db.session.rollback()
                 flash(f'Error performing action: {str(e)}', 'error')
-                print(f'Error performing action: {str(e)}', 'error')
+                logger.exception('Error performing manage_checkouts action')
 
         return redirect(url_for('lib.manage_checkouts'))
 
@@ -463,7 +471,7 @@ def direct_checkout():
                 db.session.add(borrowed_book)
             db.session.commit()
             flash('Books checked out successfully!', 'success')
-            print('Books checked out successfully!')
+            logger.info('Books checked out successfully!')
             return redirect(url_for('lib.direct_checkout'))
 
         book_query = Book.query
@@ -490,7 +498,7 @@ def direct_checkout():
         return render_template('DirectCheckout.html', form=csrf_form, books=books,verified_students=verified_students, students=students,unique_languages=unique_languages, book_languages=book_languages, student_departments=student_departments, book_search=book_search, book_language=book_language, student_search=student_search, student_department=student_department)
 
     except Exception as e:
-        print(f"Error in direct_checkout: {str(e)}")
+        logger.exception("Error in direct_checkout")
         flash('An error occurred. Please try again later.', 'danger')
         return redirect(url_for('lib.index'))  # Redirect to appropriate error page or handle as needed
 

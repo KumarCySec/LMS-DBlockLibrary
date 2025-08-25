@@ -1,6 +1,6 @@
 from flask import Blueprint,render_template,request,session, url_for, redirect,flash, current_app, jsonify, json
 from flask_login import login_required,current_user
-from .models import Book,BorrowedBook,User
+from .models import Book,BorrowedBook,User, CheckoutHistory
 from datetime import datetime,timedelta,timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 from . import db
@@ -28,11 +28,10 @@ def CheckoutBooks():
         try:
             ids = list(map(int, json.loads(raw)))
         except Exception as e:
-            print("🔴 [DEBUG] Failed to parse selected_books:", raw, "Error:", e)
+            logger.warning("Failed to parse selected_books payload", extra={"raw": raw, "error": str(e)})
             flash('Invalid selection payload.', 'danger')
             return redirect(url_for('stu.CheckoutBooks'))
 
-        print("🟢 [DEBUG] Selected IDs to checkout:", ids)
         if not ids:
             flash('Select at least one book.', 'warning')
             return redirect(url_for('stu.CheckoutBooks'))
@@ -40,7 +39,6 @@ def CheckoutBooks():
         try:
             for bid in ids:
                 book = Book.query.get(bid)
-                print(f"   → [DEBUG] Processing book id={bid}, qty={getattr(book,'quantity',None)}")
                 if book and book.quantity > 0:
                     book.quantity -= 1
                     due = datetime.now(timezone.utc) + timedelta(days=14)
@@ -53,13 +51,13 @@ def CheckoutBooks():
                     )
                     db.session.add(bb)
                 else:
-                    print(f"   ⚠️ [DEBUG] Cannot checkout book id={bid}: not found or zero quantity")
+                    logger.warning("Cannot checkout book: not found or zero quantity", extra={"book_id": bid})
             db.session.commit()
             flash('Checked out! Await verification.', 'success')
-            print("🟢 [DEBUG] Commit successful.")
+            logger.info("Checkout commit successful")
         except Exception as e:
             db.session.rollback()
-            print("🔴 [DEBUG] Checkout error:", e)
+            logger.exception("Checkout error")
             flash(f'Error during checkout: {e}', 'danger')
         return redirect(url_for('stu.CheckoutBooks'))
 
@@ -134,10 +132,15 @@ def MyBooks():
             borrowed_book = BorrowedBook.query.get(return_book_id)
 
             if borrowed_book and borrowed_book.student_id == current_user.id:
-                # Update book quantity and delete the borrowed book record
+                # Update book quantity and mark as returned + history
                 book = borrowed_book.book
                 book.quantity += 1
-                db.session.delete(borrowed_book)
+                borrowed_book.status = 'returned'
+                db.session.add(CheckoutHistory(
+                    borrowed_book_id=borrowed_book.id,
+                    student_id=borrowed_book.student_id,
+                    book_id=borrowed_book.book_id,
+                    action='return'))
                 db.session.commit()
                 flash(f'Book "{book.title}" returned successfully.', 'success')
                 return redirect(url_for('stu.MyBooks'))
@@ -148,9 +151,15 @@ def MyBooks():
             borrowed_book = BorrowedBook.query.get(renew_book_id)
 
             if borrowed_book:
-                # Calculate new due date (e.g., extend by 14 days)
+                # Calculate new due date (e.g., extend by 14 days) and mark status
                 new_due_date = datetime.utcnow() + timedelta(days=14)
                 borrowed_book.due_date = new_due_date
+                borrowed_book.status = 'renewed'
+                db.session.add(CheckoutHistory(
+                    borrowed_book_id=borrowed_book.id,
+                    student_id=borrowed_book.student_id,
+                    book_id=borrowed_book.book_id,
+                    action='renew'))
                 db.session.commit()
                 flash(f'Book "{borrowed_book.book.title}" renewed successfully.', 'success')
                 return redirect(url_for('stu.MyBooks'))

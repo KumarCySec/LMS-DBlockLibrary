@@ -6,9 +6,9 @@
     <title>Manage Librarians</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <!-- Add viewport meta tag for responsiveness -->
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap CSS (v5) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 </head>
 
 <body>
@@ -21,15 +21,15 @@
         <!-- Tab Navigation for Mobile View -->
         <ul class="nav nav-tabs nav-justified flex-column flex-md-row" id="librarianTab" role="tablist">
             <li class="nav-item">
-                <a class="nav-link active" id="verified-tab" data-toggle="tab" href="#verified" role="tab"
+                <a class="nav-link active" id="verified-tab" data-bs-toggle="tab" href="#verified" role="tab"
                     aria-controls="verified" aria-selected="true">Verified Librarians</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" id="unverified-tab" data-toggle="tab" href="#unverified" role="tab"
+                <a class="nav-link" id="unverified-tab" data-bs-toggle="tab" href="#unverified" role="tab"
                     aria-controls="unverified" aria-selected="false">Unverified Librarians</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" id="rejected-tab" data-toggle="tab" href="#rejected" role="tab"
+                <a class="nav-link" id="rejected-tab" data-bs-toggle="tab" href="#rejected" role="tab"
                     aria-controls="rejected" aria-selected="false">Rejected Librarians</a>
             </li>
         </ul>
@@ -45,8 +45,8 @@
                         <!-- Card View for Mobile -->
                         <div class="d-block d-md-none">
                             {% for librarian in verified_librarians %}
-                            <div class="card librarian-card" data-toggle="modal"
-                                data-target="#librarianDetailsModal-{{ librarian.id }}">
+                            <div class="card librarian-card" data-bs-toggle="modal"
+                                data-bs-target="#librarianDetailsModal-{{ librarian.id }}">
                                 <div class="card-body">
                                     <h5 class="card-title">{{ librarian.name }}</h5>
                                     <p class="card-text">
@@ -56,7 +56,7 @@
                                     </p>
                                     <form method="POST" action="{{ url_for('MasterAdmin.manage_librarians') }}"
                                         style="display:inline;">
-                                        {{ form.csrf_token }}
+                                        {{ form.csrf_token if form else csrf_token() }}
                                         <input type="hidden" name="librarian_id" value="{{ librarian.id }}">
                                         <button type="submit" class="btn btn-danger btn-sm" name="action"
                                             value="deverify">Deverify</button>
@@ -67,7 +67,8 @@
                         </div>
                         <!-- Table View for Desktop -->
                         <div class="d-none d-md-block">
-                            <table class="table table-hover">
+                            <div class="table-responsive">
+                            <table class="table table-hover align-middle">
                                 <thead>
                                     <tr>
                                         <th>S.no.</th>
@@ -80,8 +81,8 @@
                                 </thead>
                                 <tbody>
                                     {% for librarian in verified_librarians %}
-                                    <tr class="librarian-row" data-toggle="modal"
-                                        data-target="#librarianDetailsModal-{{ librarian.id }}">
+                                    <tr class="librarian-row" data-bs-toggle="modal"
+                                        data-bs-target="#librarianDetailsModal-{{ librarian.id }}">
                                         <td>{{ loop.index }}</td>
                                         <td>{{ librarian.name }}</td>
                                         <td>{{ librarian.phone_number }}</td>
@@ -90,7 +91,7 @@
                                         <td>
                                             <form method="POST" action="{{ url_for('MasterAdmin.manage_librarians') }}"
                                                 style="display:inline;">
-                                                {{ form.csrf_token }}
+                                                {{ form.csrf_token if form else csrf_token() }}
                                                 <input type="hidden" name="librarian_id" value="{{ librarian.id }}">
                                                 <button type="submit" class="btn btn-danger btn-sm" name="action"
                                                     value="deverify"
@@ -101,6 +102,7 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -115,8 +117,8 @@
                         <!-- Card View for Mobile -->
                         <div class="d-block d-md-none">
                             {% for librarian in unverified_librarians %}
-                            <div class="card librarian-card" data-toggle="modal"
-                                data-target="#librarianDetailsModal-{{ librarian.id }}">
+                            <div class="card librarian-card" data-bs-toggle="modal"
+                                data-bs-target="#librarianDetailsModal-{{ librarian.id }}">
                                 <div class="card-body">
                                     <h5 class="card-title">{{ librarian.name }}</h5>
                                     <p class="card-text">
@@ -124,7 +126,7 @@
                                         <strong>Email:</strong> {{ librarian.email }}
                                     </p>
                                     <form method="POST" action="{{ url_for('MasterAdmin.manage_librarians') }}">
-                                        {{ form.csrf_token }}
+                                        {{ form.csrf_token if form else csrf_token() }}
                                         <input type="hidden" name="librarian_id" value="{{ librarian.id }}">
                                         <button type="submit" class="btn btn-success btn-sm" name="action"
                                             value="verify">Verify</button>
@@ -138,7 +140,8 @@
 
                         <!-- Table View for Desktop -->
                         <div class="d-none d-md-block">
-                            <table class="table table-hover">
+                            <div class="table-responsive">
+                            <table class="table table-hover align-middle">
                                 <thead>
                                     <tr>
                                         <th>S.no.</th>
@@ -150,15 +153,15 @@
                                 </thead>
                                 <tbody>
                                     {% for librarian in unverified_librarians %}
-                                    <tr class="librarian-row" data-toggle="modal"
-                                        data-target="#librarianDetailsModal-{{ librarian.id }}">
+                                    <tr class="librarian-row" data-bs-toggle="modal"
+                                        data-bs-target="#librarianDetailsModal-{{ librarian.id }}">
                                         <td>{{ loop.index }}</td>
                                         <td>{{ librarian.name }}</td>
                                         <td>{{ librarian.phone_number }}</td>
                                         <td>{{ librarian.email }}</td>
                                         <td>
                                             <form method="POST" action="{{ url_for('MasterAdmin.manage_librarians') }}">
-                                                {{ form.csrf_token }}
+                                                {{ form.csrf_token if form else csrf_token() }}
                                                 <input type="hidden" name="librarian_id" value="{{ librarian.id }}">
                                                 <button type="submit" class="btn btn-success btn-sm" name="action"
                                                     value="verify"
@@ -172,6 +175,7 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -185,7 +189,7 @@
 
                         <!-- Delete All Rejected Button -->
                         <form method="POST" action="{{ url_for('MasterAdmin.manage_librarians') }}" class="mb-3">
-                            {{ form.csrf_token }}
+                            {{ form.csrf_token if form else csrf_token() }}
                             <button type="submit" class="btn btn-danger" name="action"
                                 value="delete_all_rejected">Delete All Rejected</button>
                         </form>
@@ -193,8 +197,8 @@
                         <!-- Card View for Mobile -->
                         <div class="d-block d-md-none">
                             {% for librarian in rejected_librarians %}
-                            <div class="card librarian-card" data-toggle="modal"
-                                data-target="#librarianDetailsModal-{{ librarian.id }}">
+                            <div class="card librarian-card" data-bs-toggle="modal"
+                                data-bs-target="#librarianDetailsModal-{{ librarian.id }}">
                                 <div class="card-body">
                                     <h5 class="card-title">{{ librarian.name }}</h5>
                                     <p class="card-text">
@@ -202,7 +206,7 @@
                                         <strong>Email:</strong> {{ librarian.email }}
                                     </p>
                                     <form method="POST" action="{{ url_for('MasterAdmin.manage_librarians') }}">
-                                        {{ form.csrf_token }}
+                                        {{ form.csrf_token if form else csrf_token() }}
                                         <input type="hidden" name="librarian_id" value="{{ librarian.id }}">
                                         <button type="submit" class="btn btn-danger btn-sm" name="action"
                                             value="delete">Delete</button>
@@ -214,7 +218,8 @@
 
                         <!-- Table View for Desktop -->
                         <div class="d-none d-md-block">
-                            <table class="table table-hover">
+                            <div class="table-responsive">
+                            <table class="table table-hover align-middle">
                                 <thead>
                                     <tr>
                                         <th>S.no.</th>
@@ -226,15 +231,15 @@
                                 </thead>
                                 <tbody>
                                     {% for librarian in rejected_librarians %}
-                                    <tr class="librarian-row" data-toggle="modal"
-                                        data-target="#librarianDetailsModal-{{ librarian.id }}">
+                                    <tr class="librarian-row" data-bs-toggle="modal"
+                                        data-bs-target="#librarianDetailsModal-{{ librarian.id }}">
                                         <td>{{ loop.index }}</td>
                                         <td>{{ librarian.name }}</td>
                                         <td>{{ librarian.phone_number }}</td>
                                         <td>{{ librarian.email }}</td>
                                         <td>
                                             <form method="POST" action="{{ url_for('MasterAdmin.manage_librarians') }}">
-                                                {{ form.csrf_token }}
+                                                {{ form.csrf_token if form else csrf_token() }}
                                                 <input type="hidden" name="librarian_id" value="{{ librarian.id }}">
                                                 <button type="submit" class="btn btn-danger btn-sm" name="action"
                                                     value="delete"
@@ -245,6 +250,7 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -267,45 +273,7 @@
     </style>
     {% endblock %}
 
-    {% block Booksscripts %}
-    <!-- Ensure jQuery is included before Bootstrap JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
-
-    <script>
-        $(document).ready(function () {
-
-            // Fix for unverified tab not switching
-            $('#unverified-tab').on('click', function (e) {
-                e.preventDefault();
-                $(this).tab('show');
-                $('#verified').removeClass('show active');
-                $('#rejected').removeClass('show active');
-                $('#unverified').addClass('show active');
-            });
-
-            // Fix for verified tab switching back
-            $('#verified-tab').on('click', function (e) {
-                e.preventDefault();
-                $(this).tab('show');
-                $('#unverified').removeClass('show active');
-                $('#rejected').removeClass('show active');
-                $('#verified').addClass('show active');
-            });
-
-            // Fix for rejected tab switching back
-            $('#rejected-tab').on('click', function (e) {
-                e.preventDefault();
-                $(this).tab('show');
-                $('#unverified').removeClass('show active');
-                $('#verified').removeClass('show active');
-                $('#rejected').addClass('show active');
-            });
-
-
-        });
-    </script>
-    {% endblock %}
+    {% block Booksscripts %}{% endblock %}
 </body>
 
 </html>
