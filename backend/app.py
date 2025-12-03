@@ -1,0 +1,40 @@
+from flask import Flask
+from config import Config
+from extensions import db, migrate, jwt, scheduler
+import models # Ensure models are imported for migration detection
+
+def create_app(config_class=Config):
+    app = Flask(__name__)
+    app.config.from_object(config_class)
+
+    # Initialize extensions
+    db.init_app(app)
+    migrate.init_app(app, db)
+    jwt.init_app(app)
+    
+    # Initialize scheduler
+    if not scheduler.running:
+        from jobs.scheduler import init_scheduler
+        init_scheduler(app)
+        scheduler.start()
+
+    # Register Blueprints
+    from routes import auth_bp, users_bp, inventory_bp, transactions_bp, admin_bp, common_bp
+    from routes.analytics import analytics_bp
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(users_bp, url_prefix='/api/users')
+    app.register_blueprint(inventory_bp, url_prefix='/api/inventory')
+    app.register_blueprint(transactions_bp, url_prefix='/api/transactions')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    app.register_blueprint(common_bp, url_prefix='/api/common')
+    app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
+
+    @app.route('/')
+    def index():
+        return {"message": "D-Block Library LMS API is running"}
+
+    return app
+
+if __name__ == '__main__':
+    app = create_app()
+    app.run(debug=True, host='0.0.0.0', port=5000)
