@@ -35,12 +35,31 @@ import Analytics from './pages/admin/Analytics';
 
 import AddItem from './pages/admin/AddItem';
 import AddDonor from './pages/admin/AddDonor';
+import ImportData from './pages/admin/ImportData';
+import Attendance from './pages/Attendance';
 
-const ProtectedRoute = ({ children, requiredRole, requiredPermission }) => {
-    const { user, loading, hasRole, hasPermission } = useAuth();
+const ProtectedRoute = ({ children, requiredRole, requiredPermission, requiredAnyPermission }) => {
+    const { user, loading, error, hasRole, hasPermission } = useAuth();
 
     if (loading) {
         return <div className="flex items-center justify-center min-h-screen"><Loader2 className="animate-spin h-8 w-8 text-indigo-600" /></div>;
+    }
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
+                <div className="bg-red-50 text-red-700 p-4 rounded-lg max-w-md">
+                    <h3 className="font-bold text-lg mb-2">Connection Error</h3>
+                    <p className="mb-4">{error}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                    >
+                        Retry Connection
+                    </button>
+                </div>
+            </div>
+        );
     }
 
     if (!user) {
@@ -52,54 +71,72 @@ const ProtectedRoute = ({ children, requiredRole, requiredPermission }) => {
     }
 
     if (requiredPermission && !hasPermission(requiredPermission)) {
-        // Use AccessDenied component logic here or render it directly
-        // Since we want to show AccessDenied UI, we can return it.
-        // But we need to import it.
-        // Let's assume we import AccessDenied at the top.
+        return <AccessDenied />;
+    }
+
+    if (requiredAnyPermission && !requiredAnyPermission.some(perm => hasPermission(perm))) {
         return <AccessDenied />;
     }
 
     return children;
 };
 
+import ScrollToTop from './components/ScrollToTop';
+
 function App() {
     return (
-        <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+        <>
+            <ScrollToTop />
+            <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
 
-            <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-                <Route index element={<Home />} />
-                <Route path="catalog" element={<Catalog />} />
-                <Route path="catalog/:id" element={<ItemDetail />} />
-                <Route path="my-borrowings" element={<MyBorrowings />} />
-                <Route path="notifications" element={<Notifications />} />
-                <Route path="profile" element={<Profile />} />
+                <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                    <Route index element={<Home />} />
+                    <Route path="catalog" element={<Catalog />} />
+                    <Route path="catalog/:id" element={<ItemDetail />} />
+                    <Route path="my-borrowings" element={<MyBorrowings />} />
+                    <Route path="notifications" element={<Notifications />} />
+                    <Route path="profile" element={<Profile />} />
 
-                {/* Staff Routes */}
-                <Route path="approvals" element={<ProtectedRoute requiredPermission="approve_checkout"><TransactionApprovals /></ProtectedRoute>} />
+                    {/* Staff Routes */}
+                    <Route path="approvals" element={
+                        <ProtectedRoute requiredAnyPermission={['approve_checkout', 'approve_return', 'approve_renew']}>
+                            <TransactionApprovals />
+                        </ProtectedRoute>
+                    } />
 
-                {/* Admin Routes */}
-                <Route path="admin" element={<ProtectedRoute requiredRole="Admin"><AdminDashboard /></ProtectedRoute>} />
-                <Route path="admin/analytics" element={<ProtectedRoute requiredRole="Admin"><Analytics /></ProtectedRoute>} />
-                <Route path="admin/inventory" element={<ProtectedRoute requiredRole="Incharge"><ManageInventory /></ProtectedRoute>} />
-                <Route path="admin/inventory/add" element={<ProtectedRoute requiredRole="Incharge"><AddItem /></ProtectedRoute>} />
-                <Route path="admin/users" element={<ProtectedRoute requiredRole="Admin"><ManageUsers /></ProtectedRoute>} />
-                <Route path="admin/users/:userId" element={<ProtectedRoute requiredRole="Admin"><UserDetail /></ProtectedRoute>} />
-                <Route path="admin/pending-approvals" element={<ProtectedRoute requiredRole="Incharge"><PendingApprovals /></ProtectedRoute>} />
-                <Route path="admin/transactions" element={<ProtectedRoute requiredRole="Volunteer"><ManageTransactions /></ProtectedRoute>} />
+                    {/* Admin Routes */}
+                    <Route path="admin" element={<ProtectedRoute requiredRole="Admin"><AdminDashboard /></ProtectedRoute>} />
+                    <Route path="admin/analytics" element={<ProtectedRoute requiredPermission="view_analytics"><Analytics /></ProtectedRoute>} />
 
-                {/* New Admin Features */}
-                <Route path="admin/settings" element={<ProtectedRoute requiredRole="Admin"><Settings /></ProtectedRoute>} />
-                <Route path="admin/roles" element={<ProtectedRoute requiredRole="Admin"><ManageRoles /></ProtectedRoute>} />
-                <Route path="admin/departments" element={<ProtectedRoute requiredRole="Admin"><ManageDepartments /></ProtectedRoute>} />
-                <Route path="admin/roster" element={<ProtectedRoute requiredRole="Incharge"><ManageRoster /></ProtectedRoute>} />
-                <Route path="admin/status" element={<ProtectedRoute requiredRole="Volunteer"><ManageStatus /></ProtectedRoute>} />
-                <Route path="admin/donors" element={<ProtectedRoute requiredRole="Incharge"><ManageDonors /></ProtectedRoute>} />
-                <Route path="admin/donors/add" element={<ProtectedRoute requiredRole="Incharge"><AddDonor /></ProtectedRoute>} />
-                <Route path="admin/donors/:donorId" element={<ProtectedRoute requiredRole="Incharge"><DonorDetail /></ProtectedRoute>} />
-            </Route>
-        </Routes>
+                    <Route path="admin/inventory" element={<ProtectedRoute requiredPermission="manage_inventory"><ManageInventory /></ProtectedRoute>} />
+                    <Route path="admin/inventory/add" element={<ProtectedRoute requiredPermission="manage_inventory"><AddItem /></ProtectedRoute>} />
+
+                    <Route path="admin/users" element={<ProtectedRoute requiredPermission="manage_users"><ManageUsers /></ProtectedRoute>} />
+                    <Route path="admin/users/:userId" element={<ProtectedRoute requiredPermission="manage_users"><UserDetail /></ProtectedRoute>} />
+                    <Route path="admin/pending-approvals" element={<ProtectedRoute requiredPermission="approve_users"><PendingApprovals /></ProtectedRoute>} />
+
+                    <Route path="admin/transactions" element={<ProtectedRoute requiredPermission="approve_checkout"><ManageTransactions /></ProtectedRoute>} />
+
+                    {/* New Admin Features */}
+                    <Route path="admin/settings" element={<ProtectedRoute requiredPermission="manage_settings"><Settings /></ProtectedRoute>} />
+                    <Route path="admin/roles" element={<ProtectedRoute requiredPermission="manage_roles_permissions"><ManageRoles /></ProtectedRoute>} />
+                    <Route path="admin/departments" element={<ProtectedRoute requiredPermission="manage_departments"><ManageDepartments /></ProtectedRoute>} />
+                    <Route path="admin/roster" element={<ProtectedRoute requiredPermission="manage_roster"><ManageRoster /></ProtectedRoute>} />
+                    <Route path="admin/status" element={<ProtectedRoute requiredPermission="update_library_status"><ManageStatus /></ProtectedRoute>} />
+
+                    <Route path="admin/donors" element={<ProtectedRoute requiredPermission="manage_donors"><ManageDonors /></ProtectedRoute>} />
+                    <Route path="admin/donors/add" element={<ProtectedRoute requiredPermission="manage_donors"><AddDonor /></ProtectedRoute>} />
+                    <Route path="admin/donors/:donorId" element={<ProtectedRoute requiredPermission="manage_donors"><DonorDetail /></ProtectedRoute>} />
+
+                    <Route path="admin/import" element={<ProtectedRoute requiredPermission="import_data"><ImportData /></ProtectedRoute>} />
+
+                    {/* Attendance */}
+                    <Route path="attendance" element={<ProtectedRoute requiredAnyPermission={['manage_roster', 'view_analytics']}><Attendance /></ProtectedRoute>} />
+                </Route>
+            </Routes>
+        </>
     );
 }
 

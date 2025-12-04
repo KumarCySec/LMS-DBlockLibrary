@@ -53,20 +53,19 @@ def login():
         return jsonify({"error": "Invalid credentials"}), 401
 
     if user.status != 'approved':
-        return jsonify({"error": f"Account is {user.status}. Please contact admin."}), 403
+        msg = f"Account is {user.status}. Please contact admin."
+        if user.status == 'rejected' and user.rejection_reason:
+            msg = f"Account Rejected: {user.rejection_reason}"
+        return jsonify({"error": msg}), 403
 
     # Create JWT
-    # Identity can be user ID, but let's store more info in claims if needed
     access_token = create_access_token(identity=str(user.id))
     
-    # Get roles
-    roles = [r.name for r in user.roles]
+    # Get single role
+    role_name = user.role
     
     # Get permissions
-    permissions = set()
-    for role in user.roles:
-        for perm in role.permissions:
-            permissions.add(perm.name)
+    permissions = user.get_all_permissions()
 
     return jsonify({
         "access_token": access_token,
@@ -74,34 +73,152 @@ def login():
             "id": user.id,
             "name": user.name,
             "email": user.email,
-            "roles": roles,
-            "permissions": list(permissions),
+            "role": role_name,
+            "permissions": permissions,
             "department_id": user.department_id
         }
     }), 200
 
+def user_to_dict(user):
+    """Safe, minimal serializer for User."""
+    try:
+        # Try to get role safely
+        role_name = None
+        if hasattr(user, 'role'):
+            role_name = user.role
+        elif hasattr(user, 'roles') and user.roles:
+             role_name = user.roles[0].name
+        
+        # Try to get permissions safely
+        permissions = []
+        try:
+            permissions = user.get_all_permissions()
+        except Exception:
+            permissions = []
+
+        return {
+            "id": user.id,
+            "name": getattr(user, "name", None),
+            "email": getattr(user, "email", None),
+            "roll_number": getattr(user, "roll_number", None),
+            "role": role_name,
+            "permissions": permissions,
+            "department_id": getattr(user, "department_id", None),
+            "department": getattr(user.department, "name", None) if getattr(user, "department", None) else None,
+            "batch": getattr(user, "batch", None),
+            "status": getattr(user, "status", None)
+        }
+    except Exception as e:
+        # Fallback if something goes terribly wrong
+        return {
+            "id": user.id,
+            "name": "Error Loading User",
+            "email": "",
+            "role": None,
+            "permissions": [],
+            "error": str(e)
+        }
+
 @auth_bp.route('/me', methods=['GET'])
 @jwt_required()
 def me():
-    current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
-    
-    if not user:
-        return jsonify({"error": "User not found"}), 404
+    """Return the current logged-in user's profile + role + permissions + stats."""
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        if not user:
+            return jsonify({"error": "User not found"}), 404
 
-    roles = [r.name for r in user.roles]
-    permissions = set()
-    for role in user.roles:
-        for perm in role.permissions:
-            permissions.add(perm.name)
+        data = user_to_dict(user)
+        
+        # Add Stats & History
+        from models import Transaction
+        
+        # Current Borrowings
+        current_borrowings = Transaction.query.filter(
+            Transaction.borrower_id == user.id,
+            Transaction.status.in_(['ISSUED', 'OVERDUE', 'RENEW_REQUESTED'])
+        ).count()
+        
+        # Books Read (Returned)
+        books_read = Transaction.query.filter(
+            Transaction.borrower_id == user.id,
+            Transaction.status == 'RETURNED'
+        ).count()
+        
+        # Days with Book (Simple calculation: sum of duration of returned books)
+        # For a more complex "streak" or "active days", we'd need more logic.
+        # Here we'll just sum up the days they held books.
+        returned_txs = Transaction.query.filter(
+            Transaction.borrower_id == user.id,
+            Transaction.status == 'RETURNED'
+        ).all()
+        
+        total_days = 0
+        history = []
+        
+        for tx in returned_txs:
+            if tx.issue_date and tx.return_date:
+                duration = (tx.return_date - tx.issue_date).days
+                total_days += duration
+            
+            # Add to history list (limit to last 5 for profile summary, or all?)
+            # Let's send last 10
+            pass
 
-    return jsonify({
-        "id": user.id,
-        "name": user.name,
-        "email": user.email,
-        "roll_number": user.roll_number,
-        "department_id": user.department_id,
-        "roles": roles,
-        "permissions": list(permissions),
-        "status": user.status
-    }), 200
+        # Fetch detailed history for the list
+        history_txs = Transaction.query.filter(
+            Transaction.borrower_id == user.id,
+            Transaction.status == 'RETURNED'
+        ).order_by(Transaction.return_date.desc()).limit(10).all()
+        
+        for tx in history_txs:
+             history.append({
+                "id": tx.id,
+                "title": tx.item.title,
+                "author": tx.item.author,
+                "issue_date": tx.issue_date.isoformat() if tx.issue_date else None,
+                "return_date": tx.return_date.isoformat() if tx.return_date else None,
+                "fine": tx.fine_accrued
+             })
+
+        data['stats'] = {
+            "current_borrowings": current_borrowings,
+            "books_read": books_read,
+            "total_days_reading": total_days
+        }
+        data['history'] = history
+
+        return jsonify(data), 200
+    except Exception as e:
+        # Last resort catch-all
+        return jsonify({"error": "Internal Server Error", "details": str(e)}), 500
+
+@auth_bp.route('/me', methods=['PUT'])
+@jwt_required()
+def update_me():
+    """Update current user's profile."""
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+            
+        data = request.get_json()
+        
+        # Allowed fields
+        if 'phone_number' in data:
+            user.phone_number = data['phone_number']
+        if 'email' in data:
+            # TODO: Validate email format?
+            user.email = data['email']
+            
+        # Don't allow changing roll_number, batch, department without admin
+        
+        db.session.commit()
+        
+        return jsonify({"message": "Profile updated successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": "Failed to update profile", "details": str(e)}), 500

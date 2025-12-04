@@ -5,7 +5,7 @@ import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import {
     Users, Shield, Building, Heart, Package, Calendar,
-    BarChart2, Settings, UserPlus, CheckCircle, AlertCircle, Clock
+    BarChart2, Settings, UserPlus, CheckCircle, AlertCircle, Clock, Upload, ArrowLeftRight
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
@@ -58,15 +58,19 @@ const AdminDashboard = () => {
     };
 
     const managementModules = [
-        { title: 'Users', icon: Users, link: '/admin/users', color: 'bg-blue-100 text-blue-700', desc: 'Manage students & staff' },
-        { title: 'Roles & Perms', icon: Shield, link: '/admin/roles', color: 'bg-indigo-100 text-indigo-700', desc: 'Configure access control' },
-        { title: 'Departments', icon: Building, link: '/admin/departments', color: 'bg-purple-100 text-purple-700', desc: 'Manage departments' },
-        { title: 'Donors', icon: Heart, link: '/admin/donors', color: 'bg-rose-100 text-rose-700', desc: 'Track donors & contributions' },
-        { title: 'Inventory', icon: Package, link: '/admin/inventory', color: 'bg-emerald-100 text-emerald-700', desc: 'Books, kits, laptops' },
-        { title: 'Roster', icon: Calendar, link: '/admin/roster', color: 'bg-orange-100 text-orange-700', desc: 'Volunteer schedule' },
-        { title: 'Analytics', icon: BarChart2, link: '/admin/analytics', color: 'bg-cyan-100 text-cyan-700', desc: 'Usage reports' },
-        { title: 'Settings', icon: Settings, link: '/admin/settings', color: 'bg-gray-100 text-gray-700', desc: 'Global configuration' },
+        { title: 'Transactions', icon: ArrowLeftRight, link: '/admin/transactions', color: 'bg-indigo-50 text-indigo-700', desc: 'History & Approvals', perm: 'approve_checkout' },
+        { title: 'Users', icon: Users, link: '/admin/users', color: 'bg-blue-100 text-blue-700', desc: 'Manage students & staff', perm: 'manage_users' },
+        { title: 'Roles & Perms', icon: Shield, link: '/admin/roles', color: 'bg-indigo-100 text-indigo-700', desc: 'Configure access control', perm: 'manage_roles' },
+        { title: 'Departments', icon: Building, link: '/admin/departments', color: 'bg-purple-100 text-purple-700', desc: 'Manage departments', perm: 'manage_departments' },
+        { title: 'Donors', icon: Heart, link: '/admin/donors', color: 'bg-rose-100 text-rose-700', desc: 'Track donors & contributions', perm: 'manage_donors' },
+        { title: 'Inventory', icon: Package, link: '/admin/inventory', color: 'bg-emerald-100 text-emerald-700', desc: 'Books, kits, laptops', perm: 'manage_inventory' },
+        { title: 'Roster', icon: Calendar, link: '/admin/roster', color: 'bg-orange-100 text-orange-700', desc: 'Volunteer schedule', perm: 'manage_roster' },
+        { title: 'Analytics', icon: BarChart2, link: '/admin/analytics', color: 'bg-cyan-100 text-cyan-700', desc: 'Usage reports', perm: 'view_analytics' },
+        { title: 'Settings', icon: Settings, link: '/admin/settings', color: 'bg-gray-100 text-gray-700', desc: 'Global configuration', perm: 'manage_settings' },
+        { title: 'Import Data', icon: Upload, link: '/admin/import', color: 'bg-teal-100 text-teal-700', desc: 'Import CSV data', perm: 'manage_inventory' },
     ];
+
+    const visibleModules = managementModules.filter(mod => hasPermission(user, mod.perm));
 
     return (
         <div className="p-4 space-y-6 pb-24 max-w-6xl mx-auto">
@@ -74,7 +78,7 @@ const AdminDashboard = () => {
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
-                    <p className="text-sm text-gray-500">Super Admin Control Center</p>
+                    <p className="text-sm text-gray-500">Super Admin Control Center ({user?.role})</p>
                 </div>
                 <div className="flex gap-2">
                     {/* Global Search could go here */}
@@ -152,7 +156,7 @@ const AdminDashboard = () => {
             <div>
                 <h2 className="text-lg font-semibold mb-4 text-gray-800">Management</h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {managementModules.map((mod, idx) => (
+                    {visibleModules.map((mod, idx) => (
                         <Link to={mod.link} key={idx}>
                             <Card className="hover:shadow-lg transition-all duration-200 h-full border-transparent hover:border-gray-200">
                                 <CardContent className="p-5 flex flex-col items-center text-center h-full justify-center">

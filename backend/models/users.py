@@ -30,11 +30,27 @@ class User(db.Model):
     approved_at = db.Column(db.DateTime)
     rejected_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     rejected_at = db.Column(db.DateTime)
+    rejection_reason = db.Column(db.String(255))
 
     roles = db.relationship('Role', secondary=user_roles, lazy='subquery',
         backref=db.backref('users', lazy=True))
     
     department = db.relationship('Department', backref='department_users')
+
+    @property
+    def role(self):
+        if self.roles:
+            return self.roles[0].name
+        return "Student"
+
+    def get_all_permissions(self):
+        perms = set()
+        if self.roles:
+            for role in self.roles:
+                if role and role.permissions:
+                    for perm in role.permissions:
+                        perms.add(perm.name)
+        return list(perms)
 
 class Role(db.Model):
     __tablename__ = 'roles'

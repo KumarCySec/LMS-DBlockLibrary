@@ -37,4 +37,17 @@ class Notification(db.Model):
     body = db.Column(db.Text)
     related_transaction_id = db.Column(db.Integer, db.ForeignKey('transactions.id'), nullable=True)
     read_flag = db.Column(db.Boolean, default=False)
+    archived = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class AttendanceLog(db.Model):
+    __tablename__ = 'attendance_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False, default=datetime.utcnow().date)
+    check_in_time = db.Column(db.DateTime, nullable=False)
+    check_out_time = db.Column(db.DateTime)
+    duration_minutes = db.Column(db.Integer)
+    status = db.Column(db.String(20), default='ACTIVE') # ACTIVE, COMPLETED
+    
+    user = db.relationship('User', backref='attendance_logs')

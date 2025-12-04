@@ -4,12 +4,15 @@ import api from '../../api/axios';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Loader2, ArrowLeft, User, Gift, Mail, Phone, MapPin } from 'lucide-react';
+import { cn } from '../../lib/utils';
+import { formatDate } from '../../utils/dateUtils';
 
 const DonorDetail = () => {
     const { donorId } = useParams();
     const navigate = useNavigate();
     const [donor, setDonor] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         // We need a backend endpoint to get single donor details + items
@@ -23,15 +26,8 @@ const DonorDetail = () => {
 
     const fetchDonorDetail = async () => {
         try {
-            // Ideally: await api.get(`/inventory/donors/${donorId}`);
-            // For now, let's fetch all and filter since we didn't explicitly create a single donor endpoint yet.
-            const response = await api.get('/inventory/donors');
-            const found = response.data.find(d => d.id === parseInt(donorId));
-            setDonor(found);
-
-            // Also fetch items donated by this donor?
-            // We can search inventory by donor_id if we add that filter.
-            // For now, just show profile.
+            const response = await api.get(`/inventory/donors/${donorId}`);
+            setDonor(response.data);
         } catch (error) {
             console.error("Failed to fetch donor", error);
         } finally {
@@ -98,10 +94,51 @@ const DonorDetail = () => {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-sm text-gray-500 italic">
-                            List of donated items will appear here.
-                        </p>
-                        {/* TODO: Fetch items where donor_id = donorId */}
+                        <div className="mb-4">
+                            <input
+                                type="text"
+                                placeholder="Search items..."
+                                className="w-full p-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+
+                        {donor.donations && donor.donations.length > 0 ? (
+                            <div className="space-y-3">
+                                {donor.donations.filter(item =>
+                                    item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                    (item.details && item.details.toLowerCase().includes(searchTerm.toLowerCase()))
+                                ).map((item, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors"
+                                        onClick={() => item.id && navigate(`/catalog/${item.id}`)}
+                                    >
+                                        <div>
+                                            <p className="font-medium text-gray-900">{item.title}</p>
+                                            <p className="text-xs text-gray-500">{item.details}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className={cn(
+                                                "text-xs font-medium px-2 py-1 rounded-full border",
+                                                item.type === 'Book' ? "bg-indigo-50 text-indigo-700 border-indigo-200" : "bg-purple-50 text-purple-700 border-purple-200"
+                                            )}>
+                                                {item.type}
+                                            </span>
+                                            {item.date && <p className="text-xs text-gray-400 mt-1">{formatDate(item.date)}</p>}
+                                        </div>
+                                    </div>
+                                ))}
+                                {donor.donations.filter(item =>
+                                    item.title.toLowerCase().includes(searchTerm.toLowerCase())
+                                ).length === 0 && (
+                                        <p className="text-sm text-center text-gray-500 py-4">No items match your search.</p>
+                                    )}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-gray-500 italic">No donations recorded.</p>
+                        )}
                     </CardContent>
                 </Card>
             </div>

@@ -12,9 +12,9 @@ def role_required(required_roles):
             if not user:
                 return jsonify({"error": "User not found"}), 404
             
-            user_roles = [r.name for r in user.roles]
-            if not any(role in user_roles for role in required_roles):
-                return jsonify({"error": "Insufficient permissions"}), 403
+            # Use the single role property
+            if user.role not in required_roles and 'Admin' != user.role:
+                 return jsonify({"error": "Insufficient permissions"}), 403
             return fn(*args, **kwargs)
         return wrapper
     return decorator
@@ -28,20 +28,22 @@ def permission_required(required_permission):
             if not user:
                 return jsonify({"error": "User not found"}), 404
             
+            # Admin role bypass
+            if user.role == 'Admin':
+                return fn(*args, **kwargs)
+
             # Check if user has any role that has the required permission
             has_perm = False
-            for role in user.roles:
-                for perm in role.permissions:
-                    if perm.name == required_permission:
-                        has_perm = True
+            if user.roles:
+                for role in user.roles:
+                    if role.permissions:
+                        for perm in role.permissions:
+                            if perm.name == required_permission:
+                                has_perm = True
+                                break
+                    if has_perm:
                         break
-                if has_perm:
-                    break
             
-            # Admin role bypass (optional, but good for safety)
-            if 'Admin' in [r.name for r in user.roles]:
-                has_perm = True
-
             if not has_perm:
                 return jsonify({"error": f"Permission '{required_permission}' required"}), 403
             return fn(*args, **kwargs)

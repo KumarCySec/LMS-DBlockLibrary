@@ -5,22 +5,19 @@ import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import {
     Loader2, Clock, Calendar, Package, UserPlus, CheckCircle,
-    AlertCircle, Search, ShoppingBag, History, Zap, BookOpen
+    AlertCircle, Search, ShoppingBag, History, Zap, BookOpen, Download, RefreshCw
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
 import { hasPermission, hasAnyPermission, getPrimaryRole } from '../utils/permissions';
 import AdminDashboard from './admin/AdminDashboard';
 import QuickCheckout from '../components/QuickCheckout';
+import BottomSheet from '../components/ui/BottomSheet';
+import { Input } from '../components/ui/Input';
 
 const Home = () => {
-    const { user } = useAuth();
+    const { user, refreshProfile } = useAuth();
     const navigate = useNavigate();
-
-    // If Admin, show the full Admin Dashboard
-    if (user && user.roles.includes('Admin')) {
-        return <AdminDashboard />;
-    }
 
     const [status, setStatus] = useState(null);
     const [roster, setRoster] = useState([]);
@@ -31,53 +28,76 @@ const Home = () => {
     });
     const [loading, setLoading] = useState(true);
     const [showCheckout, setShowCheckout] = useState(false);
+    const [showStatusModal, setShowStatusModal] = useState(false);
+    const [newStatus, setNewStatus] = useState({ is_open: false, message: '' });
+    const [refreshing, setRefreshing] = useState(false);
+
+    const handleUpdateStatus = async () => {
+        try {
+            await api.post('/common/status', newStatus);
+            setShowStatusModal(false);
+            // Refresh status
+            const res = await api.get('/common/status');
+            setStatus(res.data);
+        } catch (error) {
+            console.error("Failed to update status", error);
+        }
+    };
+
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        await refreshProfile();
+        await fetchData(); // Re-fetch dashboard data
+        setRefreshing(false);
+    };
+
+    const fetchData = async () => {
+        try {
+            const promises = [
+                api.get('/common/status'),
+                api.get('/admin/roster')
+            ];
+
+            // Fetch stats if allowed
+            if (hasAnyPermission(user, ['view_inventory', 'approve_checkout'])) {
+                promises.push(api.get('/inventory/stats').catch(() => ({ data: {} })));
+                promises.push(api.get('/users/?status=pending_approval').catch(() => ({ data: [] })));
+            } else {
+                promises.push(Promise.resolve({ data: {} })); // Placeholder
+                promises.push(Promise.resolve({ data: [] })); // Placeholder
+            }
+
+            // Fetch my borrowings for everyone
+            promises.push(api.get('/transactions/my').catch(() => ({ data: [] })));
+
+            const results = await Promise.all(promises);
+
+            setStatus(results[0].data);
+            setRoster(results[1].data);
+
+            const myTxs = results[4].data || [];
+            const activeLoans = myTxs.filter(t => t.status === 'ISSUED').length;
+            const overdue = myTxs.filter(t => t.status === 'OVERDUE' || (t.status === 'ISSUED' && new Date(t.due_date) < new Date())).length;
+
+            let pendingCount = 0;
+            if (results[3] && Array.isArray(results[3].data)) {
+                pendingCount = results[3].data.length;
+            }
+
+            setStats({
+                active_loans: activeLoans,
+                overdue: overdue,
+                pending_approvals: pendingCount
+            });
+
+        } catch (error) {
+            console.error("Failed to fetch dashboard data", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const promises = [
-                    api.get('/common/status'),
-                    api.get('/admin/roster')
-                ];
-
-                // Fetch stats if allowed
-                if (hasAnyPermission(user, ['view_inventory', 'approve_checkout'])) {
-                    promises.push(api.get('/inventory/stats').catch(() => ({ data: {} })));
-                    promises.push(api.get('/users/?status=pending_approval').catch(() => ({ data: [] })));
-                } else {
-                    promises.push(Promise.resolve({ data: {} })); // Placeholder
-                    promises.push(Promise.resolve({ data: [] })); // Placeholder
-                }
-
-                // Fetch my borrowings for everyone
-                promises.push(api.get('/transactions/my').catch(() => ({ data: [] })));
-
-                const results = await Promise.all(promises);
-
-                setStatus(results[0].data);
-                setRoster(results[1].data);
-
-                const myTxs = results[4].data || [];
-                const activeLoans = myTxs.filter(t => t.status === 'ISSUED').length;
-                const overdue = myTxs.filter(t => t.status === 'OVERDUE' || (t.status === 'ISSUED' && new Date(t.due_date) < new Date())).length;
-
-                let pendingCount = 0;
-                if (results[3] && Array.isArray(results[3].data)) {
-                    pendingCount = results[3].data.length;
-                }
-
-                setStats({
-                    active_loans: activeLoans,
-                    overdue: overdue,
-                    pending_approvals: pendingCount
-                });
-
-            } catch (error) {
-                console.error("Failed to fetch dashboard data", error);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchData();
     }, [user]);
 
@@ -98,7 +118,7 @@ const Home = () => {
             link: '/approvals',
             color: 'bg-emerald-100 text-emerald-700',
             badge: stats.pending_approvals,
-            perm: ['approve_checkout', 'approve_return', 'approve_renewal']
+            perm: ['approve_checkout', 'approve_return', 'approve_renew']
         },
         {
             id: 'pending_users',
@@ -106,7 +126,15 @@ const Home = () => {
             icon: UserPlus,
             link: '/admin/pending-approvals',
             color: 'bg-amber-100 text-amber-700',
-            badge: stats.pending_approvals, // Reuse same stat for simplicity or fetch separate
+            badge: stats.pending_approvals,
+            perm: 'approve_users'
+        },
+        {
+            id: 'users',
+            label: 'Users',
+            icon: UserPlus, // Or Users icon
+            link: '/admin/users',
+            color: 'bg-blue-100 text-blue-700',
             perm: 'manage_users'
         },
         {
@@ -116,6 +144,30 @@ const Home = () => {
             link: '/admin/inventory',
             color: 'bg-purple-100 text-purple-700',
             perm: 'manage_inventory'
+        },
+        {
+            id: 'donors',
+            label: 'Donors',
+            icon: UserPlus, // Need Heart icon?
+            link: '/admin/donors',
+            color: 'bg-rose-100 text-rose-700',
+            perm: 'manage_donors'
+        },
+        {
+            id: 'departments',
+            label: 'Depts',
+            icon: Package, // Need Building icon?
+            link: '/admin/departments',
+            color: 'bg-indigo-100 text-indigo-700',
+            perm: 'manage_departments'
+        },
+        {
+            id: 'roles',
+            label: 'Roles',
+            icon: CheckCircle, // Need Shield icon?
+            link: '/admin/roles',
+            color: 'bg-gray-100 text-gray-700',
+            perm: 'manage_roles_permissions'
         },
         {
             id: 'analytics',
@@ -131,7 +183,15 @@ const Home = () => {
             icon: Calendar,
             link: '/admin/roster',
             color: 'bg-orange-100 text-orange-700',
-            perm: 'manage_roster' // Or view_roster if distinct
+            perm: 'manage_roster'
+        },
+        {
+            id: 'settings',
+            label: 'Settings',
+            icon: Zap, // Need Settings icon?
+            link: '/admin/settings',
+            color: 'bg-gray-200 text-gray-800',
+            perm: 'manage_settings'
         },
         {
             id: 'my_borrowings',
@@ -142,6 +202,22 @@ const Home = () => {
             perm: null // Public
         },
 
+        {
+            id: 'transactions',
+            label: 'Transactions',
+            icon: History,
+            link: '/admin/transactions',
+            color: 'bg-teal-100 text-teal-700',
+            perm: 'approve_checkout'
+        },
+        {
+            id: 'import',
+            label: 'Import',
+            icon: Download,
+            link: '/admin/import',
+            color: 'bg-cyan-100 text-cyan-700',
+            perm: 'import_data'
+        },
     ];
 
     // Filter and Sort based on Role
@@ -151,8 +227,8 @@ const Home = () => {
     });
 
     const roleOrder = {
-        'Incharge': ['approvals', 'inventory', 'roster', 'analytics', 'pending_users'],
-        'Volunteer': ['approvals', 'roster', 'my_borrowings', 'catalog'],
+        'Incharge': ['approvals', 'transactions', 'inventory', 'import', 'roster', 'analytics', 'pending_users'],
+        'Volunteer': ['approvals', 'transactions', 'roster', 'my_borrowings', 'catalog'],
         'Student': ['my_borrowings', 'catalog']
     };
 
@@ -184,8 +260,18 @@ const Home = () => {
                         </span>
                     </div>
                 </div>
-                <div className="h-10 w-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold shadow-sm">
-                    {user.name[0]}
+                <div className="flex items-center gap-3">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRefresh}
+                        className={cn("text-gray-500", refreshing && "animate-spin")}
+                    >
+                        <RefreshCw className="w-5 h-5" />
+                    </Button>
+                    <div className="h-10 w-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold shadow-sm">
+                        {user.name[0]}
+                    </div>
                 </div>
             </div>
 
@@ -262,22 +348,75 @@ const Home = () => {
                 <CardContent className="pt-6">
                     <div className="flex items-center justify-between mb-2">
                         <h2 className="text-lg font-semibold">Library Status</h2>
-                        <span className={cn(
-                            "px-3 py-1 rounded-full text-xs font-medium",
-                            status?.is_open ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
-                        )}>
-                            {status?.is_open ? 'OPEN' : 'CLOSED'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className={cn(
+                                "px-3 py-1 rounded-full text-xs font-medium",
+                                status?.is_open ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                            )}>
+                                {status?.is_open ? 'OPEN' : 'CLOSED'}
+                            </span>
+                            {hasPermission(user, 'update_library_status') && (
+                                <Button size="xs" variant="outline" onClick={() => setShowStatusModal(true)}>
+                                    Update
+                                </Button>
+                            )}
+                        </div>
                     </div>
                     <p className="text-gray-600 text-sm mb-3">{status?.message || (status?.is_open ? "Library is open." : "Library is closed.")}</p>
-                    {!status?.is_open && status?.next_open && (
-                        <div className="flex items-center text-sm text-gray-500">
-                            <Clock className="w-4 h-4 mr-2" />
-                            Opens: {new Date(status.next_open).toLocaleString()}
-                        </div>
-                    )}
+                    <div className="flex flex-col gap-1">
+                        {!status?.is_open && status?.next_open && (
+                            <div className="flex items-center text-sm text-gray-500">
+                                <Clock className="w-4 h-4 mr-2" />
+                                Opens: {new Date(status.next_open).toLocaleString()}
+                            </div>
+                        )}
+                        {status?.updated_by && (
+                            <div className="text-xs text-gray-400 mt-1">
+                                Updated by {status.updated_by.name || 'Unknown'} at {new Date(status.updated_at).toLocaleTimeString()}
+                            </div>
+                        )}
+                    </div>
                 </CardContent>
             </Card>
+
+            {/* Update Status Modal */}
+            <BottomSheet
+                isOpen={showStatusModal}
+                onClose={() => setShowStatusModal(false)}
+                title="Update Library Status"
+                footer={
+                    <Button className="w-full" onClick={handleUpdateStatus}>
+                        Save Status
+                    </Button>
+                }
+            >
+                <div className="space-y-4 p-1">
+                    <div className="flex gap-2">
+                        <Button
+                            variant={newStatus.is_open ? "default" : "outline"}
+                            className={cn("flex-1", newStatus.is_open ? "bg-emerald-600 hover:bg-emerald-700" : "")}
+                            onClick={() => setNewStatus({ ...newStatus, is_open: true })}
+                        >
+                            Open
+                        </Button>
+                        <Button
+                            variant={!newStatus.is_open ? "default" : "outline"}
+                            className={cn("flex-1", !newStatus.is_open ? "bg-rose-600 hover:bg-rose-700" : "")}
+                            onClick={() => setNewStatus({ ...newStatus, is_open: false })}
+                        >
+                            Closed
+                        </Button>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Status Message</label>
+                        <Input
+                            placeholder="e.g. Will open at 2 PM"
+                            value={newStatus.message}
+                            onChange={(e) => setNewStatus({ ...newStatus, message: e.target.value })}
+                        />
+                    </div>
+                </div>
+            </BottomSheet>
 
             {/* Today's Volunteers */}
             <div>
@@ -314,6 +453,13 @@ const Home = () => {
                 isOpen={showCheckout}
                 onClose={() => setShowCheckout(false)}
             />
+
+            {/* Debug Info (Temporary for verification) */}
+            <div className="mt-8 p-4 bg-gray-100 rounded text-xs font-mono text-gray-500 overflow-x-auto">
+                <p className="font-bold">Debug Info:</p>
+                <p>Role: {primaryRole}</p>
+                <p>Permissions: {user.permissions?.join(', ') || 'None'}</p>
+            </div>
         </div>
     );
 };

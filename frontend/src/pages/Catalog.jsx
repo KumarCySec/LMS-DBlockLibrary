@@ -1,23 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
-import { Search, Filter, Book, Laptop, Box } from 'lucide-react';
+import { Search, Filter, Book, Laptop, Box, ArrowUp } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 const Catalog = () => {
+    const [searchParams, setSearchParams] = useSearchParams();
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState('');
-    const [typeFilter, setTypeFilter] = useState('');
-    const [availabilityFilter, setAvailabilityFilter] = useState('');
-    const [sort, setSort] = useState('newest');
+
+    // Initialize state from URL params
+    const [search, setSearch] = useState(searchParams.get('search') || '');
+    const [typeFilter, setTypeFilter] = useState(searchParams.get('type') || '');
+    const [languageFilter, setLanguageFilter] = useState(searchParams.get('language') || '');
+    const [availabilityFilter, setAvailabilityFilter] = useState(searchParams.get('availability') || '');
+    const [sort, setSort] = useState(searchParams.get('sort') || 'newest');
+
+    const [showScrollTop, setShowScrollTop] = useState(false);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            setShowScrollTop(window.scrollY > 300);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    const scrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // Sync state to URL
+    useEffect(() => {
+        const params = {};
+        if (search) params.search = search;
+        if (typeFilter) params.type = typeFilter;
+        if (languageFilter) params.language = languageFilter;
+        if (availabilityFilter) params.availability = availabilityFilter;
+        if (sort) params.sort = sort;
+        setSearchParams(params);
+    }, [search, typeFilter, languageFilter, availabilityFilter, sort]);
 
     useEffect(() => {
         fetchItems();
-    }, [typeFilter, availabilityFilter, sort]); // Refetch when filter changes
+    }, [typeFilter, languageFilter, availabilityFilter, sort, searchParams]); // Refetch when filters change or URL changes
 
     const fetchItems = async () => {
         setLoading(true);
@@ -25,6 +54,7 @@ const Catalog = () => {
             const params = {};
             if (search) params.search = search;
             if (typeFilter) params.type = typeFilter;
+            if (languageFilter) params.language = languageFilter;
             if (availabilityFilter) params.availability = availabilityFilter;
             if (sort) params.sort = sort;
 
@@ -60,7 +90,7 @@ const Catalog = () => {
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <Input
-                        placeholder="Search by title..."
+                        placeholder="Search by title, author, or acc no..."
                         className="pl-9"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -90,9 +120,25 @@ const Catalog = () => {
                     ))}
                 </div>
 
-                <div className="flex gap-2 w-full sm:w-auto">
+                <div className="flex gap-2 w-full sm:w-auto flex-wrap">
+                    <select
+                        value={languageFilter}
+                        onChange={(e) => setLanguageFilter(e.target.value)}
+                        className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-1 sm:flex-none"
+                    >
+                        <option value="">All Languages</option>
+                        <option value="English">English</option>
+                        <option value="Tamil">Tamil</option>
+                        <option value="Hindi">Hindi</option>
+                        {/* Add more as needed or fetch dynamically */}
+                    </select>
+
                     <button
-                        onClick={() => setAvailabilityFilter(prev => prev === 'available' ? '' : 'available')}
+                        onClick={() =>
+                            setAvailabilityFilter(prev =>
+                                prev === 'available' ? '' : 'available'
+                            )
+                        }
                         className={cn(
                             "px-3 py-1.5 rounded-md text-sm font-medium border transition-colors flex-1 sm:flex-none text-center",
                             availabilityFilter === 'available'
@@ -102,6 +148,7 @@ const Catalog = () => {
                     >
                         Available Only
                     </button>
+
                     <select
                         value={sort}
                         onChange={(e) => setSort(e.target.value)}
@@ -154,7 +201,7 @@ const Catalog = () => {
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 };
 

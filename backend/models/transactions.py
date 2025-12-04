@@ -6,6 +6,7 @@ class Transaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     transaction_id = db.Column(db.String(50), unique=True, nullable=False) # DBL-2025-000001
     inventory_item_id = db.Column(db.Integer, db.ForeignKey('inventory_items.id'), nullable=False)
+    copy_id = db.Column(db.Integer, db.ForeignKey('inventory_copies.id'), nullable=True) # Link to specific copy
     borrower_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     requested_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     approved_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
@@ -24,10 +25,16 @@ class Transaction(db.Model):
     max_renewals = db.Column(db.Integer, default=4)
     fine_accrued = db.Column(db.Float, default=0.0)
     notes = db.Column(db.Text)
+    return_feedback = db.Column(db.Text) # User feedback upon return
+    return_request_date = db.Column(db.DateTime) # When user requested return
+    rejection_reason = db.Column(db.String(255)) # Reason for rejection
 
     item = db.relationship('InventoryItem', backref=db.backref('transactions', lazy=True))
     borrower = db.relationship('User', foreign_keys=[borrower_id], backref='borrowings')
-    approver = db.relationship('User', foreign_keys=[approved_by_id], backref='approvals')
+    approved_by = db.relationship('User', foreign_keys=[approved_by_id], backref='approvals')
+    rejected_by = db.relationship('User', foreign_keys=[rejected_by_id], backref='rejections')
+    processed_by = db.relationship('User', foreign_keys=[processed_by_id], backref='processed_transactions')
+    copy = db.relationship('InventoryCopy', backref='transactions')
 
 class Waitlist(db.Model):
     __tablename__ = 'waitlist'

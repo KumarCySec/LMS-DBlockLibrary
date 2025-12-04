@@ -4,13 +4,23 @@ import api from '../../api/axios';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card, CardContent } from '../../components/ui/Card';
-import { Search, Plus, User, Phone, Mail } from 'lucide-react';
+import { Search, Plus, User, Phone, Mail, Edit2, X, Save, Download } from 'lucide-react';
+import { saveAs } from 'file-saver';
+import { format } from 'date-fns';
 
 const ManageDonors = () => {
     const [donors, setDonors] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [branchFilter, setBranchFilter] = useState('');
+    const [batchFilter, setBatchFilter] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
+
+    // Edit Modal State
+    const [editingDonor, setEditingDonor] = useState(null);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editForm, setEditForm] = useState({});
+    const [editLoading, setEditLoading] = useState(false);
 
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(search), 500);
@@ -19,13 +29,15 @@ const ManageDonors = () => {
 
     useEffect(() => {
         fetchDonors();
-    }, [debouncedSearch]);
+    }, [debouncedSearch, branchFilter, batchFilter]);
 
     const fetchDonors = async () => {
         setLoading(true);
         try {
             const params = {};
             if (debouncedSearch) params.search = debouncedSearch;
+            if (branchFilter) params.branch = branchFilter;
+            if (batchFilter) params.batch = batchFilter;
             const response = await api.get('/inventory/donors', { params });
             setDonors(response.data);
         } catch (error) {
@@ -35,15 +47,31 @@ const ManageDonors = () => {
         }
     };
 
+    const handleExport = async () => {
+        try {
+            const response = await api.get('/export/donors', { responseType: 'blob' });
+            const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            saveAs(blob, `Donors_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+        } catch (error) {
+            console.error("Export failed", error);
+            alert("Export failed");
+        }
+    };
+
     return (
         <div className="p-4 space-y-6 pb-24 max-w-5xl mx-auto">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-2xl font-bold text-gray-900">Manage Donors</h1>
-                <Link to="/admin/donors/add">
-                    <Button>
-                        <Plus className="w-4 h-4 mr-2" /> Add Donor
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={handleExport} className="flex items-center gap-2 border-green-600 text-green-700 hover:bg-green-50">
+                        <Download className="w-4 h-4" /> Export
                     </Button>
-                </Link>
+                    <Link to="/admin/donors/add">
+                        <Button>
+                            <Plus className="w-4 h-4 mr-2" /> Add Donor
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
             {/* Search */}
@@ -54,6 +82,22 @@ const ManageDonors = () => {
                     className="pl-9"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
+                />
+            </div>
+
+            {/* Filters */}
+            <div className="flex gap-4">
+                <Input
+                    placeholder="Filter by Branch"
+                    value={branchFilter}
+                    onChange={(e) => setBranchFilter(e.target.value)}
+                    className="max-w-xs"
+                />
+                <Input
+                    placeholder="Filter by Batch"
+                    value={batchFilter}
+                    onChange={(e) => setBatchFilter(e.target.value)}
+                    className="max-w-xs"
                 />
             </div>
 
@@ -80,6 +124,19 @@ const ManageDonors = () => {
                                                 <p className="text-xs text-gray-500">{donor.branch} • {donor.batch}</p>
                                             </div>
                                         </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setEditingDonor(donor);
+                                                setEditForm(donor);
+                                                setShowEditModal(true);
+                                            }}
+                                        >
+                                            <Edit2 className="w-4 h-4 text-gray-400 hover:text-indigo-600" />
+                                        </Button>
                                     </div>
 
                                     <div className="pt-2 space-y-1">
@@ -100,6 +157,80 @@ const ManageDonors = () => {
                     ))
                 )}
             </div>
+
+            {/* Edit Modal */}
+            {showEditModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+                        <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 className="font-bold text-lg">Edit Donor</h3>
+                            <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-600">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium">Name</label>
+                                <Input
+                                    value={editForm.name}
+                                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-sm font-medium">Branch</label>
+                                    <Input
+                                        value={editForm.branch || ''}
+                                        onChange={(e) => setEditForm({ ...editForm, branch: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-sm font-medium">Batch</label>
+                                    <Input
+                                        value={editForm.batch || ''}
+                                        onChange={(e) => setEditForm({ ...editForm, batch: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium">Email</label>
+                                <Input
+                                    value={editForm.email || ''}
+                                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-sm font-medium">Mobile</label>
+                                <Input
+                                    value={editForm.mobile_number || ''}
+                                    onChange={(e) => setEditForm({ ...editForm, mobile_number: e.target.value })}
+                                />
+                            </div>
+                            <div className="pt-2 flex gap-3">
+                                <Button variant="outline" className="flex-1" onClick={() => setShowEditModal(false)}>Cancel</Button>
+                                <Button
+                                    className="flex-1"
+                                    isLoading={editLoading}
+                                    onClick={async () => {
+                                        setEditLoading(true);
+                                        try {
+                                            await api.put(`/inventory/donors/${editingDonor.id}`, editForm);
+                                            setShowEditModal(false);
+                                            fetchDonors();
+                                        } catch (e) {
+                                            alert("Failed to update donor");
+                                        } finally {
+                                            setEditLoading(false);
+                                        }
+                                    }}
+                                >
+                                    Save Changes
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

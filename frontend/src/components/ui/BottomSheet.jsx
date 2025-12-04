@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-const BottomSheet = ({ isOpen, onClose, title, children }) => {
+const BottomSheet = ({ isOpen, onClose, title, children, footer, fullScreen = false }) => {
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -17,7 +17,7 @@ const BottomSheet = ({ isOpen, onClose, title, children }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/50 transition-opacity"
@@ -26,11 +26,14 @@ const BottomSheet = ({ isOpen, onClose, title, children }) => {
 
             {/* Sheet Content */}
             <div className={cn(
-                "relative w-full max-w-lg bg-white rounded-t-2xl sm:rounded-xl shadow-xl transition-transform transform duration-300 ease-out max-h-[90vh] flex flex-col",
+                "relative w-full max-w-lg bg-white shadow-xl transition-transform transform duration-300 ease-out flex flex-col",
+                fullScreen
+                    ? "h-[100dvh] rounded-none sm:h-auto sm:rounded-xl sm:max-h-[90vh]"
+                    : "max-h-[90vh] h-auto rounded-t-2xl sm:rounded-xl",
                 "animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-10 fade-in"
             )}>
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                <div className="flex items-center justify-between p-4 border-b border-gray-100 flex-shrink-0">
                     <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
                     <button
                         onClick={onClose}
@@ -40,10 +43,17 @@ const BottomSheet = ({ isOpen, onClose, title, children }) => {
                     </button>
                 </div>
 
-                {/* Body */}
-                <div className="p-4 overflow-y-auto">
+                {/* Body - Scrollable */}
+                <div className="p-4 overflow-y-auto flex-1">
                     {children}
                 </div>
+
+                {/* Footer */}
+                {footer && (
+                    <div className="p-4 border-t border-gray-100 bg-white flex-shrink-0">
+                        {footer}
+                    </div>
+                )}
             </div>
         </div>
     );

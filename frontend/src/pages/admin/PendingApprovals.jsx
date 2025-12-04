@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent } from '../../components/ui/Card';
@@ -52,7 +53,9 @@ const PendingApprovals = () => {
                                         <User className="w-5 h-5" />
                                     </div>
                                     <div>
-                                        <h3 className="font-semibold text-gray-900">{user.name}</h3>
+                                        <Link to={`/admin/users/${user.id}`} className="hover:underline">
+                                            <h3 className="font-semibold text-gray-900">{user.name}</h3>
+                                        </Link>
                                         <p className="text-sm text-gray-500">{user.roll_number} • {user.email}</p>
                                         <p className="text-xs text-gray-400">{user.branch} • {user.batch}</p>
                                     </div>

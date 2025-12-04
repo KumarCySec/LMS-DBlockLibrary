@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -6,9 +7,18 @@ import { Loader2, Calendar, AlertTriangle, CheckCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
 
+import BottomSheet from '../components/ui/BottomSheet';
+import { Input } from '../components/ui/Input';
+
 const MyBorrowings = () => {
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Return Modal State
+    const [showReturnModal, setShowReturnModal] = useState(false);
+    const [selectedTxId, setSelectedTxId] = useState(null);
+    const [feedback, setFeedback] = useState('');
+    const [actionLoading, setActionLoading] = useState(false);
 
     useEffect(() => {
         fetchTransactions();
@@ -22,6 +32,40 @@ const MyBorrowings = () => {
         } catch (error) {
             console.error("Failed to request renewal", error);
             alert(error.response?.data?.error || "Failed to request renewal");
+        }
+    };
+
+    const handleCancel = async (id) => {
+        if (!window.confirm("Are you sure you want to cancel this request?")) return;
+        try {
+            await api.post(`/transactions/${id}/cancel`);
+            alert("Request cancelled successfully!");
+            fetchTransactions();
+        } catch (error) {
+            console.error("Failed to cancel request", error);
+            alert(error.response?.data?.error || "Failed to cancel request");
+        }
+    };
+
+    const openReturnModal = (id) => {
+        setSelectedTxId(id);
+        setFeedback('');
+        setShowReturnModal(true);
+    };
+
+    const handleReturnRequest = async () => {
+        if (!selectedTxId) return;
+        setActionLoading(true);
+        try {
+            await api.post(`/transactions/${selectedTxId}/request-return`, { feedback });
+            alert("Return requested successfully!");
+            setShowReturnModal(false);
+            fetchTransactions();
+        } catch (error) {
+            console.error("Failed to request return", error);
+            alert(error.response?.data?.error || "Failed to request return");
+        } finally {
+            setActionLoading(false);
         }
     };
 
@@ -42,6 +86,8 @@ const MyBorrowings = () => {
             case 'OVERDUE': return 'text-rose-600 bg-rose-50 border-rose-200';
             case 'RETURNED': return 'text-gray-600 bg-gray-50 border-gray-200';
             case 'REQUESTED': return 'text-amber-600 bg-amber-50 border-amber-200';
+            case 'RETURN_REQUESTED': return 'text-purple-600 bg-purple-50 border-purple-200';
+            case 'REJECTED': return 'text-red-600 bg-red-50 border-red-200';
             default: return 'text-gray-600 bg-gray-50 border-gray-200';
         }
     };
@@ -61,13 +107,16 @@ const MyBorrowings = () => {
                     {transactions.map((tx) => (
                         <Card key={tx.id} className={cn("border-l-4",
                             tx.status === 'OVERDUE' ? 'border-l-rose-500' :
-                                tx.status === 'ISSUED' ? 'border-l-emerald-500' : 'border-l-gray-300'
+                                tx.status === 'ISSUED' ? 'border-l-emerald-500' :
+                                    tx.status === 'RETURN_REQUESTED' ? 'border-l-purple-500' : 'border-l-gray-300'
                         )}>
                             <CardContent className="p-4">
                                 <div className="flex justify-between items-start mb-2">
-                                    <h3 className="font-semibold text-gray-900">{tx.item_title}</h3>
+                                    <Link to={`/catalog/${tx.inventory_item_id}`} className="hover:underline">
+                                        <h3 className="font-semibold text-gray-900">{tx.item_title}</h3>
+                                    </Link>
                                     <span className={cn("text-xs font-medium px-2 py-1 rounded-full border", getStatusColor(tx.status))}>
-                                        {tx.status}
+                                        {tx.status.replace('_', ' ')}
                                     </span>
                                 </div>
 
@@ -97,27 +146,78 @@ const MyBorrowings = () => {
                                             Fine: ₹{tx.fine}
                                         </div>
                                     )}
+                                    {tx.rejection_reason && (
+                                        <div className="mt-2 text-rose-600 text-sm bg-rose-50 p-2 rounded border border-rose-100">
+                                            <strong>Last Rejection:</strong> {tx.rejection_reason}
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
                                     <div className="text-xs text-gray-400">
                                         ID: {tx.transaction_id}
                                     </div>
-                                    {tx.status === 'ISSUED' && (
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 h-8"
-                                            onClick={() => handleRenew(tx.id)}
-                                        >
-                                            Request Renewal
-                                        </Button>
-                                    )}
+                                    <div className="flex gap-2">
+                                        {(tx.status === 'REQUESTED' || tx.status === 'RENEW_REQUESTED' || tx.status === 'RETURN_REQUESTED') && (
+                                            <Button
+                                                size="sm"
+                                                variant="destructive"
+                                                className="h-8"
+                                                onClick={() => handleCancel(tx.id)}
+                                            >
+                                                Cancel Request
+                                            </Button>
+                                        )}
+                                        {(tx.status === 'ISSUED' || tx.status === 'OVERDUE') && (
+                                            <>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 h-8"
+                                                    onClick={() => handleRenew(tx.id)}
+                                                >
+                                                    Renew
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    className="bg-indigo-600 hover:bg-indigo-700 text-white h-8"
+                                                    onClick={() => openReturnModal(tx.id)}
+                                                >
+                                                    Return
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
                     ))}
                 </div>
             )}
+
+            <BottomSheet
+                isOpen={showReturnModal}
+                onClose={() => setShowReturnModal(false)}
+                title="Return Item"
+                footer={
+                    <Button className="w-full" onClick={handleReturnRequest} isLoading={actionLoading}>
+                        Confirm Return Request
+                    </Button>
+                }
+            >
+                <div className="space-y-4">
+                    <p className="text-sm text-gray-600">
+                        Are you sure you want to return this item? You can optionally leave feedback or report any issues below.
+                    </p>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Feedback / Issues (Optional)</label>
+                        <Input
+                            value={feedback}
+                            onChange={(e) => setFeedback(e.target.value)}
+                            placeholder="e.g. Great book! or Mouse not working properly..."
+                        />
+                    </div>
+                </div>
+            </BottomSheet>
         </div>
     );
 };

@@ -12,6 +12,10 @@ def create_app(config_class=Config):
     migrate.init_app(app, db)
     jwt.init_app(app)
     
+    # Enable CORS
+    from flask_cors import CORS
+    CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5173", "http://192.168.29.43:5173"]}}, supports_credentials=True)
+    
     # Initialize scheduler
     if not scheduler.running:
         from jobs.scheduler import init_scheduler
@@ -21,6 +25,10 @@ def create_app(config_class=Config):
     # Register Blueprints
     from routes import auth_bp, users_bp, inventory_bp, transactions_bp, admin_bp, common_bp
     from routes.analytics import analytics_bp
+    from routes.import_routes import import_bp
+    from routes.inventory_export import inventory_export_bp
+    from routes.roster import roster_bp
+    from routes.attendance import attendance_bp
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api/users')
     app.register_blueprint(inventory_bp, url_prefix='/api/inventory')
@@ -28,6 +36,10 @@ def create_app(config_class=Config):
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(common_bp, url_prefix='/api/common')
     app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
+    app.register_blueprint(import_bp, url_prefix='/api/import')
+    app.register_blueprint(inventory_export_bp, url_prefix='/api/export')
+    app.register_blueprint(roster_bp, url_prefix='/api/roster')
+    app.register_blueprint(attendance_bp, url_prefix='/api/attendance')
 
     @app.route('/')
     def index():
@@ -37,4 +49,4 @@ def create_app(config_class=Config):
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5176)

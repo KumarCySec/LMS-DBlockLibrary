@@ -24,11 +24,31 @@ const UserDetail = () => {
         }
     }, [showRoleModal]);
 
+    useEffect(() => {
+        fetchUserDetail();
+    }, [userId]);
+
+    const fetchUserDetail = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await api.get(`/users/${userId}`);
+            setUser(response.data);
+        } catch (error) {
+            console.error("Failed to fetch user details", error);
+            setError("Failed to load user details");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const fetchRoles = async () => {
         try {
             const res = await api.get('/admin/roles');
             setRoles(res.data);
-            setSelectedRoles(user.roles);
+            if (user && user.roles) {
+                setSelectedRoles(user.roles);
+            }
         } catch (error) {
             console.error("Failed to fetch roles", error);
         }
@@ -47,14 +67,65 @@ const UserDetail = () => {
         }
     };
 
-    const handleBlock = async () => {
-        if (!window.confirm("Are you sure you want to BLOCK this user?")) return;
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
+
+    const handleApprove = async () => {
         setActionLoading(true);
         try {
-            await api.put(`/users/${userId}/status`, { status: 'blocked' });
+            await api.post(`/users/${userId}/approve`, { action: 'approve' });
             fetchUserDetail();
         } catch (error) {
-            alert("Failed to block user");
+            alert("Failed to approve user");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleRejectClick = () => {
+        setShowRejectModal(true);
+    };
+
+    const confirmReject = async () => {
+        setActionLoading(true);
+        try {
+            await api.post(`/users/${userId}/approve`, { action: 'reject', reason: rejectionReason });
+            setShowRejectModal(false);
+            fetchUserDetail();
+        } catch (error) {
+            alert("Failed to reject user");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!window.confirm("Are you sure you want to DELETE this user? This action cannot be undone.")) return;
+
+        setActionLoading(true);
+        try {
+            await api.delete(`/users/${userId}`);
+            alert("User deleted successfully");
+            navigate('/admin/users');
+        } catch (error) {
+            if (error.response && error.response.status === 400 && error.response.data.requires_confirmation) {
+                const { active_count } = error.response.data;
+                const confirmForce = window.confirm(
+                    `User has ${active_count} active items. \n\nDo you want to RETURN these items to inventory and DELETE the user?`
+                );
+
+                if (confirmForce) {
+                    try {
+                        await api.delete(`/users/${userId}?force=true`);
+                        alert("Items returned and user deleted successfully");
+                        navigate('/admin/users');
+                    } catch (forceError) {
+                        alert("Failed to delete user: " + (forceError.response?.data?.error || forceError.message));
+                    }
+                }
+            } else {
+                alert("Failed to delete user: " + (error.response?.data?.error || error.message));
+            }
         } finally {
             setActionLoading(false);
         }
@@ -146,7 +217,7 @@ const UserDetail = () => {
                                     <button onClick={() => setShowRoleModal(true)} className="text-xs text-indigo-600 hover:underline">Edit</button>
                                 </div>
                                 <div className="flex flex-wrap gap-1 mt-1">
-                                    {user.roles.map(r => (
+                                    {(user.roles || []).map(r => (
                                         <span key={r} className="text-xs bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
                                             {r}
                                         </span>
@@ -171,14 +242,14 @@ const UserDetail = () => {
                                     <Button onClick={handleApprove} isLoading={actionLoading} className="bg-green-600 hover:bg-green-700 flex-1">
                                         <CheckCircle className="w-4 h-4 mr-2" /> Approve
                                     </Button>
-                                    <Button onClick={handleReject} isLoading={actionLoading} variant="destructive" className="flex-1">
+                                    <Button onClick={handleRejectClick} isLoading={actionLoading} variant="destructive" className="flex-1">
                                         <AlertCircle className="w-4 h-4 mr-2" /> Reject
                                     </Button>
                                 </div>
                             )}
                             {user.status !== 'blocked' && user.status !== 'rejected' && (
-                                <Button onClick={handleBlock} variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 w-full">
-                                    Block User
+                                <Button onClick={handleDelete} variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 w-full">
+                                    Delete User
                                 </Button>
                             )}
                         </div>
@@ -287,6 +358,29 @@ const UserDetail = () => {
                         <div className="flex justify-end gap-2">
                             <Button variant="ghost" onClick={() => setShowRoleModal(false)}>Cancel</Button>
                             <Button onClick={handleRoleSave} isLoading={actionLoading}>Save Roles</Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Rejection Modal */}
+            {showRejectModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                        <h3 className="text-lg font-bold mb-2 text-red-600">Reject User</h3>
+                        <p className="text-sm text-gray-600 mb-4">Please provide a reason for rejection. This will be visible to the user.</p>
+
+                        <textarea
+                            className="w-full border border-gray-300 rounded-md p-2 text-sm mb-4 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                            rows="3"
+                            placeholder="Reason for rejection..."
+                            value={rejectionReason}
+                            onChange={(e) => setRejectionReason(e.target.value)}
+                        ></textarea>
+
+                        <div className="flex justify-end gap-2">
+                            <Button variant="ghost" onClick={() => setShowRejectModal(false)}>Cancel</Button>
+                            <Button onClick={confirmReject} isLoading={actionLoading} variant="destructive">Reject User</Button>
                         </div>
                     </div>
                 </div>

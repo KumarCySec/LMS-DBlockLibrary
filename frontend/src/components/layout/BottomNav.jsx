@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Home, BookOpen, User, Bell, ShoppingBag } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
+import { hasPermission } from '../../utils/permissions';
 
 const BottomNav = () => {
     const location = useLocation();
@@ -17,6 +18,11 @@ const BottomNav = () => {
         { icon: Bell, label: 'Alerts', path: '/notifications' },
         { icon: User, label: 'Profile', path: '/profile' },
     ];
+
+    // Example of permission-based filtering if needed in BottomNav
+    // For now, these are basic links available to most. 
+    // If we wanted to hide Catalog for some reason:
+    // if (!hasPermission(user, 'view_catalog')) { ... }
 
     return (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-safe z-50">
