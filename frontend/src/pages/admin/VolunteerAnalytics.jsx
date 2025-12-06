@@ -30,39 +30,33 @@ const VolunteerAnalytics = () => {
         }
     };
 
-    const handleExport = (type) => {
-        let headers, csvContent, filename;
-        const dateStr = new Date().toISOString().split('T')[0];
+    const handleExport = async (type) => {
+        try {
+            const endpoint = type === 'summary' ? '/export/volunteers/summary' : '/export/volunteers/detailed';
+            const response = await api.get(endpoint, { responseType: 'blob' });
 
-        if (type === 'summary') {
-            headers = ['Volunteer Name', 'Total Hours', 'Shifts Completed', 'Avg Shift Duration'];
-            csvContent = [
-                headers.join(','),
-                ...data.hours_by_volunteer.map(row => [
-                    `"${row.name}"`,
-                    row.total_hours,
-                    row.shifts,
-                    row.shifts > 0 ? (row.total_hours / row.shifts).toFixed(2) : 0
-                ].join(','))
-            ].join('\n');
-            filename = `volunteer_summary_${dateStr}.csv`;
-        } else {
-            // Detailed export - for now we simulate it with the same data but maybe different structure
-            // Ideally this would fetch raw logs from backend
-            headers = ['Volunteer Name', 'Department', 'Date', 'Check In', 'Check Out', 'Duration (mins)'];
-            // Since we don't have raw logs in 'data' state here, we'll just export the summary for now
-            // In a real app, we'd fetch /attendance/export
-            alert("Detailed export requires backend implementation. Exporting summary instead.");
-            return;
+            const filename = type === 'summary'
+                ? `Volunteer_Summary_${new Date().toISOString().split('T')[0]}.xlsx`
+                : `Volunteer_Detailed_Logs_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+            const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            // content-disposition header might have filename, but we can set it manually
+
+            // Create download link
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            setExportModalOpen(false);
+        } catch (error) {
+            console.error("Export failed", error);
+            alert("Failed to export report. Please try again.");
         }
-
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        setExportModalOpen(false);
     };
 
     if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
@@ -245,8 +239,8 @@ const VolunteerAnalytics = () => {
                                     <tr key={idx} className="bg-white hover:bg-gray-50/80 transition-colors">
                                         <td className="px-6 py-4 font-bold text-gray-900 flex items-center gap-3">
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-yellow-100 text-yellow-700' :
-                                                    idx === 1 ? 'bg-gray-100 text-gray-700' :
-                                                        idx === 2 ? 'bg-orange-100 text-orange-700' : 'bg-indigo-50 text-indigo-600'
+                                                idx === 1 ? 'bg-gray-100 text-gray-700' :
+                                                    idx === 2 ? 'bg-orange-100 text-orange-700' : 'bg-indigo-50 text-indigo-600'
                                                 }`}>
                                                 {idx < 3 ? <Medal className="w-4 h-4" /> : row.name.charAt(0)}
                                             </div>

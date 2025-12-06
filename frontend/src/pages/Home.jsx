@@ -223,6 +223,14 @@ const Home = () => {
             perm: ['view_analytics']
         },
         {
+            id: 'volunteer_stats',
+            label: 'Vol Stats', // Short label
+            icon: Users, // Reusing Users icon or Trophy
+            link: '/admin/volunteer-analytics',
+            color: 'bg-emerald-100 text-emerald-600',
+            perm: ['view_analytics']
+        },
+        {
             id: 'activity',
             label: 'Activity',
             icon: Activity,

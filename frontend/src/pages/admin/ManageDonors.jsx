@@ -14,14 +14,10 @@ const ManageDonors = () => {
     const [search, setSearch] = useState('');
     const [branchFilter, setBranchFilter] = useState('');
     const [batchFilter, setBatchFilter] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [departments, setDepartments] = useState([]);
 
-    // Edit Modal State
-    const [editingDonor, setEditingDonor] = useState(null);
-    const [showEditModal, setShowEditModal] = useState(false);
-    const [editForm, setEditForm] = useState({});
-    const [editLoading, setEditLoading] = useState(false);
-
+    // Debounce search
+    const [debouncedSearch, setDebouncedSearch] = useState(search);
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(search), 500);
         return () => clearTimeout(timer);
@@ -30,6 +26,19 @@ const ManageDonors = () => {
     useEffect(() => {
         fetchDonors();
     }, [debouncedSearch, branchFilter, batchFilter]);
+
+    // Fetch Departments for Filter
+    useEffect(() => {
+        const fetchDepts = async () => {
+            try {
+                const response = await api.get('/common/departments');
+                setDepartments(response.data);
+            } catch (error) {
+                console.error("Failed to fetch departments", error);
+            }
+        };
+        fetchDepts();
+    }, []);
 
     const fetchDonors = async () => {
         setLoading(true);
@@ -47,11 +56,29 @@ const ManageDonors = () => {
         }
     };
 
-    const handleExport = async () => {
+    // Edit Modal State
+    const [editingDonor, setEditingDonor] = useState(null);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editForm, setEditForm] = useState({});
+    const [editLoading, setEditLoading] = useState(false);
+
+    // Export Modal
+    const [showExportModal, setShowExportModal] = useState(false);
+
+    const handleExport = async (type = 'all') => {
         try {
-            const response = await api.get('/export/donors', { responseType: 'blob' });
+            const params = {};
+            if (type === 'current') {
+                if (debouncedSearch) params.search = debouncedSearch;
+                if (branchFilter) params.branch = branchFilter;
+                if (batchFilter) params.batch = batchFilter;
+            }
+
+            const response = await api.get('/export/donors', { params, responseType: 'blob' });
             const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            saveAs(blob, `Donors_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+
+            saveAs(blob, `Donors_${type === 'all' ? 'All' : 'Filtered'}_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+            setShowExportModal(false);
         } catch (error) {
             console.error("Export failed", error);
             alert("Export failed");
@@ -63,7 +90,7 @@ const ManageDonors = () => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-2xl font-bold text-gray-900">Manage Donors</h1>
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={handleExport} className="flex items-center gap-2 border-green-600 text-green-700 hover:bg-green-50">
+                    <Button variant="outline" onClick={() => setShowExportModal(true)} className="flex items-center gap-2 border-green-600 text-green-700 hover:bg-green-50">
                         <Download className="w-4 h-4" /> Export
                     </Button>
                     <Link to="/admin/donors/add">
@@ -87,12 +114,16 @@ const ManageDonors = () => {
 
             {/* Filters */}
             <div className="flex gap-4">
-                <Input
-                    placeholder="Filter by Branch"
+                <select
+                    className="h-10 rounded-md border border-input bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 max-w-xs w-full"
                     value={branchFilter}
                     onChange={(e) => setBranchFilter(e.target.value)}
-                    className="max-w-xs"
-                />
+                >
+                    <option value="">All Branches</option>
+                    {departments.map(d => (
+                        <option key={d.id} value={d.name}>{d.name}</option>
+                    ))}
+                </select>
                 <Input
                     placeholder="Filter by Batch"
                     value={batchFilter}
@@ -226,6 +257,47 @@ const ManageDonors = () => {
                                 >
                                     Save Changes
                                 </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Export Modal */}
+            {showExportModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+                        <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 className="font-bold text-lg">Export Donors</h3>
+                            <button onClick={() => setShowExportModal(false)} className="text-gray-400 hover:text-gray-600">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            <div
+                                onClick={() => handleExport('all')}
+                                className="p-4 border rounded-xl flex items-center gap-4 cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors"
+                            >
+                                <div className="p-3 bg-indigo-100 rounded-full">
+                                    <Download className="w-6 h-6 text-indigo-700" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-900">Export All Donors</h3>
+                                    <p className="text-sm text-gray-500">Download complete list of all donors.</p>
+                                </div>
+                            </div>
+
+                            <div
+                                onClick={() => handleExport('current')}
+                                className="p-4 border rounded-xl flex items-center gap-4 cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors"
+                            >
+                                <div className="p-3 bg-emerald-100 rounded-full">
+                                    <Search className="w-6 h-6 text-emerald-700" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-900">Export Filtered List</h3>
+                                    <p className="text-sm text-gray-500">Export donors matching current search/filter criteria.</p>
+                                </div>
                             </div>
                         </div>
                     </div>

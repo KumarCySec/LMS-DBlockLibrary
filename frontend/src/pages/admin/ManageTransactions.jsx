@@ -46,8 +46,21 @@ const ManageTransactions = () => {
     const [selectedTx, setSelectedTx] = useState(null);
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [showRejectModal, setShowRejectModal] = useState(false);
+    const [showExportModal, setShowExportModal] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
     const [actionLoading, setActionLoading] = useState(false);
+
+    const handleMasterExport = async () => {
+        try {
+            const response = await api.get('/export/transactions', { responseType: 'blob' });
+            const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            saveAs(blob, `Master_Checkout_Register_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+            setShowExportModal(false);
+        } catch (error) {
+            console.error("Master Export failed", error);
+            alert("Export failed");
+        }
+    };
 
     useEffect(() => {
         const statusParam = searchParams.get('status');
@@ -206,11 +219,46 @@ const ManageTransactions = () => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <Button onClick={exportToExcel} variant="outline" className="flex items-center gap-2 border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900">
+                    <Button onClick={() => setShowExportModal(true)} variant="outline" className="flex items-center gap-2 border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900">
                         <Download className="w-4 h-4" /> <span className="hidden sm:inline">Export</span>
                     </Button>
                 </div>
             </div>
+
+            {/* Export Modal */}
+            <Modal
+                isOpen={showExportModal}
+                onClose={() => setShowExportModal(false)}
+                title="Export Transactions"
+            >
+                <div className="space-y-4">
+                    <div
+                        onClick={handleMasterExport}
+                        className="p-4 border rounded-xl flex items-center gap-4 cursor-pointer hover:bg-green-50 hover:border-green-200 transition-colors"
+                    >
+                        <div className="p-3 bg-green-100 rounded-full">
+                            <Book className="w-6 h-6 text-green-700" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-gray-900">Master Checkout Register</h3>
+                            <p className="text-sm text-gray-500">Complete history of all transactions (Issue, Return, Renewals) with fine details.</p>
+                        </div>
+                    </div>
+
+                    <div
+                        onClick={() => { exportToExcel(); setShowExportModal(false); }}
+                        className="p-4 border rounded-xl flex items-center gap-4 cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors"
+                    >
+                        <div className="p-3 bg-blue-100 rounded-full">
+                            <Filter className="w-6 h-6 text-blue-700" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-gray-900">Export Current View</h3>
+                            <p className="text-sm text-gray-500">Export only the currently filtered list shown on screen.</p>
+                        </div>
+                    </div>
+                </div>
+            </Modal>
 
             {/* Filters */}
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">

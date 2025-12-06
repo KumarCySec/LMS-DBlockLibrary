@@ -109,11 +109,29 @@ const ManageUsers = () => {
         setFilter('all');
     };
 
-    const handleExport = async () => {
+    // Export Modal
+    const [showExportModal, setShowExportModal] = useState(false);
+
+    const handleExport = async (type = 'all') => {
         try {
-            const response = await api.get('/export/users', { responseType: 'blob' });
+            const params = {};
+            if (type === 'current') {
+                if (filter !== 'all') params.status = filter;
+                if (debouncedSearch) params.search = debouncedSearch;
+                if (roleFilter) params.role = roleFilter;
+                if (deptFilter) params.department_id = deptFilter;
+                if (batchFilter) params.batch = batchFilter;
+            }
+
+            const response = await api.get('/export/users', { params, responseType: 'blob' });
             const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            saveAs(blob, `Users_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+
+            const filename = type === 'all'
+                ? `All_Users_${format(new Date(), 'yyyy-MM-dd')}.xlsx`
+                : `Users_Filtered_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+
+            saveAs(blob, filename);
+            setShowExportModal(false);
         } catch (error) {
             console.error("Export failed", error);
             alert("Export failed");
@@ -126,7 +144,7 @@ const ManageUsers = () => {
                 <div className="flex justify-between items-center">
                     <h1 className="text-2xl font-bold text-gray-900">Manage Users</h1>
                     <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={handleExport} className="flex items-center gap-2 border-green-600 text-green-700 hover:bg-green-50">
+                        <Button variant="outline" size="sm" onClick={() => setShowExportModal(true)} className="flex items-center gap-2 border-green-600 text-green-700 hover:bg-green-50">
                             <Download className="w-4 h-4" /> Export
                         </Button>
                         <Button variant="ghost" size="sm" onClick={clearFilters} className="text-gray-500 hover:text-indigo-600">
@@ -310,6 +328,40 @@ const ManageUsers = () => {
                                 />
                             </label>
                         ))}
+                    </div>
+                </div>
+            </BottomSheet>
+
+            <BottomSheet
+                isOpen={showExportModal}
+                onClose={() => setShowExportModal(false)}
+                title="Export Users"
+            >
+                <div className="space-y-4 p-4">
+                    <div
+                        onClick={() => handleExport('all')}
+                        className="p-4 border rounded-xl flex items-center gap-4 cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors"
+                    >
+                        <div className="p-3 bg-indigo-100 rounded-full">
+                            <Download className="w-6 h-6 text-indigo-700" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-gray-900">Export All Users</h3>
+                            <p className="text-sm text-gray-500">Download complete database of users.</p>
+                        </div>
+                    </div>
+
+                    <div
+                        onClick={() => handleExport('current')}
+                        className="p-4 border rounded-xl flex items-center gap-4 cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors"
+                    >
+                        <div className="p-3 bg-emerald-100 rounded-full">
+                            <Filter className="w-6 h-6 text-emerald-700" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-gray-900">Export Filtered List</h3>
+                            <p className="text-sm text-gray-500">Export only the users matching current filters (Batch, Dept, etc).</p>
+                        </div>
                     </div>
                 </div>
             </BottomSheet>

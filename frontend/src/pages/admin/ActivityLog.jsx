@@ -33,25 +33,22 @@ const ActivityLog = () => {
         } catch (e) { console.error(e); } finally { setLoading(false); }
     };
 
-    const handleExport = () => {
-        const headers = ['Time', 'User', 'Action', 'Details', 'IP'];
-        const csvContent = [
-            headers.join(','),
-            ...logs.map(log => [
-                format(new Date(log.created_at), 'HH:mm:ss'),
-                `"${log.user}"`,
-                log.action,
-                `"${log.details?.replace(/"/g, '""')}"`,
-                log.ip
-            ].join(','))
-        ].join('\n');
+    const [showExportModal, setShowExportModal] = useState(false);
 
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `activity_log_${format(currentDate, 'yyyy-MM-dd')}.csv`;
-        a.click();
+    const handleExport = async (type) => { // 'all' or 'current_date'
+        try {
+            const params = {};
+            if (type === 'date') {
+                params.date = format(currentDate, 'yyyy-MM-dd');
+            }
+            const response = await api.get('/export/activity', { params, responseType: 'blob' });
+            const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            saveAs(blob, `Activity_Log_${type === 'all' ? 'All' : format(currentDate, 'yyyy-MM-dd')}.xlsx`);
+            setShowExportModal(false);
+        } catch (error) {
+            console.error("Export failed", error);
+            alert("Export failed");
+        }
     };
 
     const getActionColor = (action) => {
@@ -88,7 +85,7 @@ const ActivityLog = () => {
                     <Button variant="outline" onClick={() => fetchLogs()} disabled={loading}>
                         <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} /> Refresh
                     </Button>
-                    <Button variant="outline" onClick={handleExport} disabled={logs.length === 0}>
+                    <Button variant="outline" onClick={() => setShowExportModal(true)} disabled={logs.length === 0}>
                         <Download className="w-4 h-4 mr-2" /> Export
                     </Button>
                 </div>
@@ -186,7 +183,51 @@ const ActivityLog = () => {
                     ))
                 )}
             </div>
-        </div>
+
+
+            {/* Export Modal */}
+            {
+                showExportModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+                            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                                <h3 className="font-bold text-lg">Export Activity</h3>
+                                <button onClick={() => setShowExportModal(false)} className="text-gray-400 hover:text-gray-600">
+                                    <ChevronLeft className="w-5 h-5 rotate-180" /> {/* Using Chevron as X fallback if X not imported, or just close */}
+                                </button>
+                            </div>
+                            <div className="p-4 space-y-4">
+                                <div
+                                    onClick={() => handleExport('all')}
+                                    className="p-4 border rounded-xl flex items-center gap-4 cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-colors"
+                                >
+                                    <div className="p-3 bg-indigo-100 rounded-full">
+                                        <Activity className="w-6 h-6 text-indigo-700" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-gray-900">Export All History</h3>
+                                        <p className="text-sm text-gray-500">Download the complete activity log since beginning.</p>
+                                    </div>
+                                </div>
+
+                                <div
+                                    onClick={() => handleExport('date')}
+                                    className="p-4 border rounded-xl flex items-center gap-4 cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-colors"
+                                >
+                                    <div className="p-3 bg-emerald-100 rounded-full">
+                                        <Calendar className="w-6 h-6 text-emerald-700" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-gray-900">Export for {format(currentDate, 'MMM d, yyyy')}</h3>
+                                        <p className="text-sm text-gray-500">Download activity only for the currently selected date.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 };
 

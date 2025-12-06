@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Loader2, TrendingUp, Users, BookOpen, AlertCircle, RefreshCw } from 'lucide-react';
+import { Loader2, TrendingUp, Users, BookOpen, AlertCircle, RefreshCw, Download } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const Analytics = () => {
@@ -71,29 +71,17 @@ const Analytics = () => {
                     <Button size="sm" variant="outline" onClick={() => window.location.href = '/admin/volunteer-analytics'}>
                         Volunteer Stats
                     </Button>
+                    <Button size="sm" variant="outline" onClick={() => alert("Dashboard Export feature coming soon!")}> {/* Placeholder as no backend specified */}
+                        <Download className="w-4 h-4 mr-2" /> Export
+                    </Button>
                     <Button size="sm" variant="ghost" onClick={fetchAnalytics}>
                         <RefreshCw className="w-4 h-4" />
                     </Button>
                 </div>
             </div>
 
-            {/* Overview Cards */}
-            <div className="grid grid-cols-2 gap-4">
-                <Card className="bg-indigo-50 border-indigo-100">
-                    <CardContent className="p-4 flex flex-col items-center text-center">
-                        <TrendingUp className="w-6 h-6 text-indigo-600 mb-2" />
-                        <p className="text-2xl font-bold text-indigo-700">{data.activeCheckouts}</p>
-                        <p className="text-xs text-indigo-600 font-medium">Active Loans</p>
-                    </CardContent>
-                </Card>
-                <Card className="bg-rose-50 border-rose-100">
-                    <CardContent className="p-4 flex flex-col items-center text-center">
-                        <AlertCircle className="w-6 h-6 text-rose-600 mb-2" />
-                        <p className="text-2xl font-bold text-rose-700">{data.overdueCount}</p>
-                        <p className="text-xs text-rose-600 font-medium">Overdue</p>
-                    </CardContent>
-                </Card>
-            </div>
+            {/* Overview Cards Removed as per request */}
+
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Department Usage */}
