@@ -3,6 +3,10 @@ from extensions import db, jwt
 from models import User, Role, user_roles
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from datetime import datetime, timedelta
+import random
+from utils.email_service import EmailService
+
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -222,3 +226,94 @@ def update_me():
         return jsonify({"message": "Profile updated successfully"}), 200
     except Exception as e:
         return jsonify({"error": "Failed to update profile", "details": str(e)}), 500
+
+@auth_bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.get_json()
+    email = data.get('email')
+    
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+        
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        # User explicitly requested to know if email doesn't exist
+        return jsonify({"error": "No account found with this email."}), 404
+        
+    # Rate Limiting & Cooldown
+    current_time = datetime.utcnow()
+    
+    # 1. Cooldown Check (2 minutes)
+    if user.otp_last_sent_at and (current_time - user.otp_last_sent_at) < timedelta(minutes=2):
+        return jsonify({"error": "Please wait a few minutes before requesting another OTP."}), 429
+        
+    # 2. Daily Limit Check (Max 3 per day)
+    # Handle None values safely
+    sent_count = user.otp_sent_count if user.otp_sent_count is not None else 0
+    
+    if user.otp_last_sent_at and user.otp_last_sent_at.date() == current_time.date():
+        if sent_count >= 3:
+             return jsonify({"error": "Daily OTP limit reached. Please try again tomorrow."}), 429
+        user.otp_sent_count = sent_count + 1
+    else:
+        # Reset count for new day
+        user.otp_sent_count = 1
+        
+    user.otp_last_sent_at = current_time
+
+    # Generate OTP
+    otp = str(random.randint(100000, 999999))
+    user.reset_otp = otp
+    user.reset_otp_expiry = current_time + timedelta(minutes=10)
+    
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Database error during OTP generation: {e}")
+        # Return strict error to frontend so we know it's DB related
+        return jsonify({"error": f"Database Error: {str(e)}"}), 500
+    
+    # Send Email
+    try:
+        if EmailService.send_otp_email(user.email, otp, user.name):
+            return jsonify({"message": "OTP sent successfully."}), 200
+        else:
+            return jsonify({"error": "Failed to send email. Please try again later."}), 500
+    except Exception as e:
+        print(f"Email sending error: {e}")
+        return jsonify({"error": "Failed to send email."}), 500
+
+@auth_bp.route('/reset-password', methods=['POST'])
+def reset_password():
+    data = request.get_json()
+    email = data.get('email')
+    otp = data.get('otp')
+    new_password = data.get('password')
+    
+    if not all([email, otp, new_password]):
+        return jsonify({"error": "Email, OTP, and Password are required"}), 400
+        
+    user = User.query.filter_by(email=email).first()
+    
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Ensure strings and strip
+    received_otp = str(otp).strip()
+    stored_otp = str(user.reset_otp).strip() if user.reset_otp else ""
+
+    if stored_otp != received_otp:
+        return jsonify({"error": "Invalid OTP provided"}), 400
+        
+    # Safely check expiry
+    if not user.reset_otp_expiry or user.reset_otp_expiry < datetime.utcnow():
+        return jsonify({"error": "OTP has expired. Please request a new one."}), 400
+        
+    # Reset Password
+    user.password_hash = generate_password_hash(new_password)
+    user.reset_otp = None
+    user.reset_otp_expiry = None
+    db.session.commit()
+    
+    return jsonify({"message": "Password reset successfully. You can now login."}), 200

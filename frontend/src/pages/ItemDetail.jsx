@@ -4,12 +4,11 @@ import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
-import { Loader2, ArrowLeft, CheckCircle, AlertCircle, ShieldCheck, History, Clock, XCircle } from 'lucide-react';
+import { Loader2, ArrowLeft, CheckCircle, AlertCircle, ShieldCheck, History, Clock, XCircle, Banknote } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { formatDate } from '../utils/dateUtils';
 
 const ActionButtons = ({ item, handleCheckout, handleJoinWaitlist, actionLoading }) => {
-    // const { hasPermission } = useAuth(); 
     // Logic is simplified: Everyone sees Checkout if available. Backend handles permissions.
 
     if (item.quantity_available > 0) {
@@ -75,8 +74,26 @@ const ItemDetail = () => {
     };
 
     const handleCheckout = async () => {
-        if (item.copies && item.copies.length > 0 && !selectedAccNo) {
+        let accNoToCheckout = selectedAccNo;
+
+        // Auto-select first available if none selected
+        if (!accNoToCheckout && item.copies) {
+            const firstAvailable = item.copies.find(c => c.status === 'AVAILABLE');
+            if (firstAvailable) {
+                accNoToCheckout = firstAvailable.acc_no;
+                setSelectedAccNo(accNoToCheckout);
+            }
+        }
+
+        if (item.copies && item.copies.length > 0 && !accNoToCheckout) {
             setMessage({ type: 'error', text: 'Please select a Copy / Accession Number' });
+            return;
+        }
+
+        // If we just auto-selected or user selected, but modal isn't open, open it first
+        if (!checkoutModal) {
+            const copy = item.copies.find(c => c.acc_no === accNoToCheckout);
+            setCheckoutModal(copy);
             return;
         }
 
@@ -85,7 +102,7 @@ const ItemDetail = () => {
         try {
             const response = await api.post('/transactions/request', {
                 item_id: item.id,
-                acc_no: selectedAccNo
+                acc_no: accNoToCheckout
             });
             const { status, due_date } = response.data;
 
@@ -100,6 +117,7 @@ const ItemDetail = () => {
             setMessage({ type: 'error', text: error.response?.data?.message || error.response?.data?.error || 'Failed to request checkout' });
         } finally {
             setActionLoading(false);
+            setCheckoutModal(null);
         }
     };
 
@@ -164,6 +182,19 @@ const ItemDetail = () => {
                                 {item.quantity_available > 0 ? 'Available' : 'Out of Stock'}
                             </span>
                         </div>
+
+                        {item.type === 'Laptop' && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-3">
+                                <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-sm font-bold text-amber-800">Daily Rent: ₹10</p>
+                                    <p className="text-xs text-amber-600 mt-1">
+                                        Rent applies for each day the laptop is borrowed.
+                                        Same-day return incurs 1 day rent.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="space-y-2">
                             <h3 className="font-medium text-gray-900">Details</h3>
@@ -255,9 +286,17 @@ const ItemDetail = () => {
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                         <div className="bg-white rounded-lg p-6 w-full max-w-sm">
                             <h3 className="text-lg font-bold text-gray-900 mb-2">Confirm Checkout</h3>
-                            <p className="text-gray-600 mb-4">
-                                Do you want to checkout copy <strong>{checkoutModal.acc_no}</strong>?
-                            </p>
+                            <div className="bg-gray-50 p-3 rounded mb-4">
+                                <p className="text-gray-600 text-sm">
+                                    Checkout copy <strong>{checkoutModal.acc_no}</strong>?
+                                </p>
+                                {item.type === 'Laptop' && (
+                                    <div className="mt-2 text-amber-700 text-xs font-bold flex items-center gap-1">
+                                        <Banknote className="w-3 h-3" />
+                                        Daily Rent: ₹10 applies.
+                                    </div>
+                                )}
+                            </div>
                             <div className="flex gap-3">
                                 <Button variant="ghost" onClick={() => setCheckoutModal(null)} className="flex-1">Cancel</Button>
                                 <Button

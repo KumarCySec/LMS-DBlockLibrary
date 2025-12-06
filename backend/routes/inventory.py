@@ -211,6 +211,8 @@ def update_inventory(item_id):
         item.model = data['model']
     if 'specs' in data:
         item.specs = data['specs']
+    if 'serial_number' in data:
+        item.serial_number = data['serial_number']
     if 'donor_id' in data:
         item.donor_id = data['donor_id']
         

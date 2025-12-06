@@ -31,6 +31,7 @@ def create_app(config_class=Config):
     from routes.attendance import attendance_bp
     from routes.announcements import announcements_bp
     from routes.activity import activity_bp
+    from routes.payments import payments_bp
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api/users')
     app.register_blueprint(inventory_bp, url_prefix='/api/inventory')
@@ -44,6 +45,7 @@ def create_app(config_class=Config):
     app.register_blueprint(attendance_bp, url_prefix='/api/attendance')
     app.register_blueprint(announcements_bp, url_prefix='/api/announcements')
     app.register_blueprint(activity_bp, url_prefix='/api/activity')
+    app.register_blueprint(payments_bp, url_prefix='/api/payments')
 
     @app.route('/')
     def index():

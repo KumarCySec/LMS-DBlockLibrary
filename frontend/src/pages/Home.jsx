@@ -6,7 +6,7 @@ import { Button } from '../components/ui/Button';
 import {
     CheckCircle, UserPlus, Bell, Clock, Activity, Loader2, Calendar,
     Users, Phone, Mail, Building, Zap, Search, Package, BarChart2,
-    History, BookOpen, Settings, Upload, FileText, UserCog, Heart, Shield, X
+    History, BookOpen, Settings, Upload, FileText, UserCog, Heart, Shield, X, Banknote
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getPrimaryRole, hasAnyPermission } from '../utils/permissions';
@@ -245,6 +245,14 @@ const Home = () => {
             link: '/admin/settings',
             color: 'bg-slate-100 text-slate-600',
             perm: ['manage_settings']
+        },
+        {
+            id: 'payments',
+            label: 'Payments',
+            icon: Banknote,
+            link: '/payments',
+            color: 'bg-green-100 text-green-600',
+            perm: null // For everyone
         }
     ];
 

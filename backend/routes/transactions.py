@@ -42,6 +42,8 @@ def list_transactions():
                     "due_date": tx.due_date.isoformat() if tx.due_date else None,
                     "return_date": tx.return_date.isoformat() if tx.return_date else None,
                     "fine": tx.fine_accrued,
+                    "rent_amount": tx.rent_amount,
+                    "payment_status": tx.payment_status,
                     "approved_by": tx.approved_by.name if tx.approved_by else None,
                     "rejected_by": tx.rejected_by.name if tx.rejected_by else None,
                     "rejection_reason": getattr(tx, 'rejection_reason', None),
@@ -140,8 +142,12 @@ def request_checkout():
         if copy:
             copy.status = 'ISSUED'
         
-        default_due_days = AppSetting.query.get('default_due_days')
-        days = int(default_due_days.value) if default_due_days else 14
+        if item.type == 'Laptop':
+            laptop_days_setting = AppSetting.query.get('laptop_due_days')
+            days = int(laptop_days_setting.value) if laptop_days_setting else 7
+        else:
+            default_due_days = AppSetting.query.get('default_due_days')
+            days = int(default_due_days.value) if default_due_days else 14
         due_date = datetime.utcnow() + timedelta(days=days)
 
     new_tx = Transaction(
@@ -209,8 +215,12 @@ def approve_checkout(tx_id):
         tx.issue_date = datetime.utcnow()
         
         # Calculate Due Date
-        default_due_days = AppSetting.query.get('default_due_days')
-        days = int(default_due_days.value) if default_due_days else 14
+        if item.type == 'Laptop':
+            laptop_days_setting = AppSetting.query.get('laptop_due_days')
+            days = int(laptop_days_setting.value) if laptop_days_setting else 7
+        else:
+            default_due_days = AppSetting.query.get('default_due_days')
+            days = int(default_due_days.value) if default_due_days else 14
         tx.due_date = datetime.utcnow() + timedelta(days=days)
         
         # Notify User
@@ -287,12 +297,23 @@ def request_return(tx_id):
         tx.processed_by_id = current_user_id
         tx.processed_at = datetime.utcnow()
         
-        # Calculate Fine
-        if tx.return_date > tx.due_date:
+        # Calculate Rent & Fine
+        if item.type == 'Laptop':
+            # Rent Logic
+            rent_days = max(1, (tx.return_date.date() - tx.issue_date.date()).days)
+            daily_rent_setting = AppSetting.query.get('laptop_daily_rent')
+            daily_rent = float(daily_rent_setting.value) if daily_rent_setting else 10.0
+            tx.rent_amount = rent_days * daily_rent
+            if tx.rent_amount > 0:
+                tx.payment_status = 'PENDING'
+        elif tx.return_date > tx.due_date:
+            # Book Fine Logic
             fine_per_day = AppSetting.query.get('fine_per_day')
             rate = float(fine_per_day.value) if fine_per_day else 10.0
             overdue_days = (tx.return_date - tx.due_date).days
             tx.fine_accrued = max(0, overdue_days * rate)
+            if tx.fine_accrued > 0:
+                tx.payment_status = 'PENDING'
             
         db.session.commit()
         return jsonify({"message": "Item returned successfully (Auto-Staff)", "fine": tx.fine_accrued}), 200
@@ -370,12 +391,23 @@ def approve_return(tx_id):
     tx.processed_by_id = current_user_id
     tx.processed_at = datetime.utcnow()
     
-    # Calculate Fine (Final check)
-    if tx.return_date > tx.due_date:
+    # Calculate Rent & Fine (Final check)
+    if item.type == 'Laptop':
+        # Rent Logic
+        rent_days = max(1, (tx.return_date.date() - tx.issue_date.date()).days)
+        daily_rent_setting = AppSetting.query.get('laptop_daily_rent')
+        daily_rent = float(daily_rent_setting.value) if daily_rent_setting else 10.0
+        tx.rent_amount = rent_days * daily_rent
+        if tx.rent_amount > 0:
+             tx.payment_status = 'PENDING'
+    elif tx.return_date > tx.due_date:
+        # Book Fine Logic
         fine_per_day = AppSetting.query.get('fine_per_day')
         rate = float(fine_per_day.value) if fine_per_day else 10.0
         overdue_days = (tx.return_date - tx.due_date).days
         tx.fine_accrued = max(0, overdue_days * rate)
+        if tx.fine_accrued > 0:
+             tx.payment_status = 'PENDING'
         
     db.session.commit()
     
@@ -565,20 +597,33 @@ def my_transactions():
                 if tx.item:
                     item_title = tx.item.title
                 
-                result.append({
+                data_dict = {
                     "id": tx.id,
                     "transaction_id": tx.transaction_id,
                     "inventory_item_id": tx.inventory_item_id,
                     "item_title": item_title,
+                    "item_type": tx.item.type if tx.item else "Unknown",
                     "status": tx.status,
                     "issue_date": tx.issue_date,
                     "due_date": tx.due_date,
                     "return_date": tx.return_date,
                     "fine": tx.fine_accrued,
-                    "fine": tx.fine_accrued,
+                    "rent_amount": tx.rent_amount,
+                    "current_rent": 0,
+                    "payment_status": tx.payment_status,
                     "rejection_reason": tx.rejection_reason,
                     "renewal_count": tx.renewal_count or 0
-                })
+                }
+                
+                # Calculate live rent for active laptop loans
+                if tx.status == 'ISSUED' and tx.item and tx.item.type == 'Laptop':
+                    rent_days = max(1, (datetime.utcnow().date() - tx.issue_date.date()).days)
+                    # Ideally cache this setting or fetch once outside loop, but for 'my' txs count is low.
+                    daily_rent_setting = AppSetting.query.get('laptop_daily_rent')
+                    daily_rent = float(daily_rent_setting.value) if daily_rent_setting else 10.0
+                    data_dict["current_rent"] = rent_days * daily_rent
+                
+                result.append(data_dict)
             except:
                 continue
                 

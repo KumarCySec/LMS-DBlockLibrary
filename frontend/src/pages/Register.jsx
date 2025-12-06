@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../components/ui/Card';
+import StrengthMeter from '../components/ui/StrengthMeter';
 import gceLogo from '../assets/gce_logo.png';
 
 import api from '../api/axios';
@@ -44,9 +45,21 @@ const Register = () => {
         setFormData({ ...formData, [e.target.id]: e.target.value });
     };
 
+    const validatePassword = (pwd) => {
+        const hasLength = /.{8,}/.test(pwd);
+        const hasSymbol = /[!@#$%^&*(),.?":{}|<>]/.test(pwd);
+        return hasLength && hasSymbol;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+
+        if (!validatePassword(formData.password)) {
+            setError("Password must be at least 8 characters and contain a symbol.");
+            return;
+        }
+
         setIsLoading(true);
 
         const result = await register(formData);
@@ -140,6 +153,7 @@ const Register = () => {
                             <div className="space-y-1">
                                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1" htmlFor="password">Password</label>
                                 <Input id="password" type="password" value={formData.password} onChange={handleChange} required className="h-9 bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 rounded-lg text-sm" placeholder="••••••••" />
+                                {formData.password && <StrengthMeter password={formData.password} />}
                             </div>
 
                             {formData.department_id && (

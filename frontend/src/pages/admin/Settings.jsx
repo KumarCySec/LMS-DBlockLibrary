@@ -49,7 +49,9 @@ const Settings = () => {
     // Define known settings with labels
     const configFields = [
         { key: 'fine_per_day', label: 'Fine Per Day (₹)', type: 'number' },
-        { key: 'default_due_days', label: 'Default Due Days', type: 'number' },
+        { key: 'default_due_days', label: 'Default Due Days (Books)', type: 'number' },
+        { key: 'laptop_due_days', label: 'Laptop Loan Period (Days)', type: 'number' },
+        { key: 'laptop_daily_rent', label: 'Laptop Daily Rent (₹)', type: 'number' },
         { key: 'max_renewals', label: 'Max Renewals Allowed', type: 'number' },
         { key: 'library_open_time', label: 'Library Open Time', type: 'time' },
         { key: 'library_close_time', label: 'Library Close Time', type: 'time' },

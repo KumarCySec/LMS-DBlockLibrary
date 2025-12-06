@@ -29,6 +29,11 @@ class Transaction(db.Model):
     return_request_date = db.Column(db.DateTime) # When user requested return
     rejection_reason = db.Column(db.String(255)) # Reason for rejection
 
+    # Rent & Payments
+    rent_amount = db.Column(db.Float, default=0.0)
+    payment_status = db.Column(db.String(20), default='PENDING') # PENDING, REQUESTED, PAID
+    payment_method = db.Column(db.String(50), nullable=True) # Cash, UPI, etc.
+
     item = db.relationship('InventoryItem', backref=db.backref('transactions', lazy=True))
     borrower = db.relationship('User', foreign_keys=[borrower_id], backref='borrowings')
     approved_by = db.relationship('User', foreign_keys=[approved_by_id], backref='approvals')

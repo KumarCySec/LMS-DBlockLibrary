@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import { useAuth } from './context/AuthContext';
 import { Loader2 } from 'lucide-react';
 import AccessDenied from './components/AccessDenied';
@@ -41,6 +42,7 @@ import Attendance from './pages/Attendance';
 import Announcements from './pages/admin/Announcements';
 import ActivityLog from './pages/admin/ActivityLog';
 import CurrentOutstanding from './pages/admin/CurrentOutstanding';
+import Payments from './pages/Payments';
 
 const ProtectedRoute = ({ children, requiredRole, requiredPermission, requiredAnyPermission }) => {
     const { user, loading, error, hasRole, hasPermission } = useAuth();
@@ -94,6 +96,7 @@ function App() {
             <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
 
                 <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                     <Route index element={<Home />} />
@@ -146,6 +149,8 @@ function App() {
 
                     {/* Attendance */}
                     <Route path="attendance" element={<ProtectedRoute requiredAnyPermission={['manage_roster', 'view_analytics', 'update_library_status']}><Attendance /></ProtectedRoute>} />
+
+                    <Route path="payments" element={<Payments />} />
                 </Route>
             </Routes>
         </>

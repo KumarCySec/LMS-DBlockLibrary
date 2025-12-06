@@ -32,6 +32,13 @@ class User(db.Model):
     rejected_at = db.Column(db.DateTime)
     rejection_reason = db.Column(db.String(255))
 
+    # OTP Support
+    reset_otp = db.Column(db.String(6))
+    reset_otp_expiry = db.Column(db.DateTime)
+    otp_last_sent_at = db.Column(db.DateTime)
+    otp_sent_count = db.Column(db.Integer, default=0)
+
+
     roles = db.relationship('Role', secondary=user_roles, lazy='subquery',
         backref=db.backref('users', lazy=True))
     

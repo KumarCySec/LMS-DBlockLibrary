@@ -141,6 +141,16 @@ const MyBorrowings = () => {
                                             Returned: {format(new Date(tx.return_date), 'MMM d, yyyy')}
                                         </div>
                                     )}
+                                    {tx.current_rent > 0 && tx.status === 'ISSUED' && (
+                                        <div className="mt-2 text-indigo-600 font-medium flex items-center bg-indigo-50 p-2 rounded border border-indigo-100 animate-pulse">
+                                            Current Rent: ₹{tx.current_rent}
+                                        </div>
+                                    )}
+                                    {tx.rent_amount > 0 && (
+                                        <div className="mt-2 text-gray-700 font-medium flex items-center bg-gray-100 p-2 rounded border border-gray-200">
+                                            Final Rent: ₹{tx.rent_amount}
+                                        </div>
+                                    )}
                                     {tx.fine > 0 && (
                                         <div className="mt-2 text-rose-600 font-medium flex items-center bg-rose-50 p-2 rounded">
                                             Fine: ₹{tx.fine}
@@ -192,7 +202,8 @@ const MyBorrowings = () => {
                         </Card>
                     ))}
                 </div>
-            )}
+            )
+            }
 
             <BottomSheet
                 isOpen={showReturnModal}
@@ -218,7 +229,7 @@ const MyBorrowings = () => {
                     </div>
                 </div>
             </BottomSheet>
-        </div>
+        </div >
     );
 };
 
