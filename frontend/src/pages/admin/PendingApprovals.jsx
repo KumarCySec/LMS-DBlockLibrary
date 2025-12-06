@@ -89,7 +89,7 @@ const PendingApprovals = () => {
                                 <div className="space-y-2 mb-4">
                                     <div className="flex items-center text-xs text-gray-600 bg-gray-50 p-2 rounded-lg">
                                         <BookOpen className="w-3 h-3 mr-2 text-indigo-500" />
-                                        {user.department || 'No Dept'} • {user.batch || 'No Batch'}
+                                        {user.department_name || 'No Dept'} • {user.batch || 'No Batch'}
                                     </div>
                                     <div className="flex items-center text-xs text-gray-600 bg-gray-50 p-2 rounded-lg">
                                         <Mail className="w-3 h-3 mr-2 text-indigo-500" />
@@ -165,7 +165,7 @@ const PendingApprovals = () => {
                                     </div>
                                     <div>
                                         <p className="text-xs text-gray-500 uppercase font-bold">Department</p>
-                                        <p className="font-medium text-gray-900">{selectedUser.department || 'N/A'}</p>
+                                        <p className="font-medium text-gray-900">{selectedUser.department_name || 'N/A'}</p>
                                     </div>
                                 </div>
 

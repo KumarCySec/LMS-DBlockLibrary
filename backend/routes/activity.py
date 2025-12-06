@@ -7,7 +7,7 @@ from utils.decorators import permission_required
 
 activity_bp = Blueprint('activity', __name__)
 
-@activity_bp.route('/', methods=['GET'])
+@activity_bp.route('', methods=['GET'])
 @jwt_required()
 @permission_required('view_analytics')
 def get_activity_logs():
@@ -27,8 +27,13 @@ def get_activity_logs():
         try:
             from datetime import datetime, timedelta
             date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
-            next_day = date_obj + timedelta(days=1)
-            query = query.filter(ActivityLog.created_at >= date_obj, ActivityLog.created_at < next_day)
+            # Adjust time window for IST (UTC+5:30)
+            # We want records where (created_at + 5:30) is within the selected date
+            # So created_at must be between (Date 00:00 - 5:30) and (Date+1 00:00 - 5:30)
+            start_dt = datetime.combine(date_obj, datetime.min.time()) - timedelta(hours=5, minutes=30)
+            end_dt = start_dt + timedelta(days=1)
+            
+            query = query.filter(ActivityLog.created_at >= start_dt, ActivityLog.created_at < end_dt)
         except ValueError:
             pass # Ignore invalid date
         
@@ -42,7 +47,7 @@ def get_activity_logs():
             "action": log.action_type,
             "details": log.details,
             "ip": log.ip_address,
-            "created_at": log.created_at.isoformat()
+            "created_at": log.created_at.isoformat() + 'Z' # Add Z to indicate UTC
         })
         
     return jsonify({

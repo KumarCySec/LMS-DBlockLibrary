@@ -7,7 +7,11 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 
 def get_today_date():
     # IST is UTC + 5:30
-    return (datetime.utcnow() + timedelta(hours=5, minutes=30)).date()
+    now_ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
+    # Logical Day: If before 4 AM, count as previous day
+    if now_ist.hour < 4:
+        return (now_ist - timedelta(days=1)).date()
+    return now_ist.date()
 
 attendance_bp = Blueprint('attendance', __name__)
 

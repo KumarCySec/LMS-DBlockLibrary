@@ -366,7 +366,7 @@ const ManageInventory = () => {
                         <p className="text-2xl font-bold text-emerald-900">{stats.available_copies || 0}</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-rose-50 border-rose-100">
+                <Card className="bg-rose-50 border-rose-100 cursor-pointer hover:shadow-md transition-shadow" onClick={() => window.location.href = '/admin/inventory/outstanding'}>
                     <CardContent className="p-4">
                         <p className="text-xs font-medium text-rose-600 uppercase">Active Loans</p>
                         <p className="text-2xl font-bold text-rose-900">{stats.active_checkouts || 0}</p>

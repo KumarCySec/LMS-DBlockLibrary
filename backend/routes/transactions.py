@@ -45,7 +45,8 @@ def list_transactions():
                     "approved_by": tx.approved_by.name if tx.approved_by else None,
                     "rejected_by": tx.rejected_by.name if tx.rejected_by else None,
                     "rejection_reason": getattr(tx, 'rejection_reason', None),
-                    "return_approved_by": tx.processed_by.name if tx.processed_by and tx.status == 'RETURNED' else None
+                    "processed_by": tx.processed_by.name if tx.processed_by else None,
+                    "renewal_count": tx.renewal_count,
                 })
             except Exception as e:
                 print(f"Error processing tx {tx.id}: {e}")

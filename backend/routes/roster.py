@@ -80,8 +80,15 @@ def update_roster():
 
 @roster_bp.route('/today', methods=['GET'])
 def get_today_roster():
-    # IST Fix
-    today = (datetime.utcnow() + timedelta(hours=5, minutes=30)).date()
+    # Use explicit IST offset
+    now_ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
+    
+    # Logical Day: If before 4 AM, count as previous day (for late night shifts/testing)
+    if now_ist.hour < 4:
+        today = (now_ist - timedelta(days=1)).date()
+    else:
+        today = now_ist.date()
+        
     s = VolunteerSchedule.query.filter_by(date=today).first()
     
     if not s:

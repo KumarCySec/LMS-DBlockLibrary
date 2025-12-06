@@ -41,6 +41,15 @@ const Notifications = () => {
         }
     };
 
+    const dismiss = async (id) => {
+        try {
+            await api.post(`/common/notifications/${id}/clear`);
+            setNotifications(notifications.filter(n => n.id !== id));
+        } catch (error) {
+            console.error("Failed to dismiss notification", error);
+        }
+    };
+
     const markAllRead = async () => {
         try {
             await api.post('/common/notifications/mark-all-read');
@@ -150,14 +159,22 @@ const Notifications = () => {
                                     </div>
                                     <p className="text-sm text-gray-600 mt-1">{notif.body}</p>
 
-                                    {!notif.read && (
+                                    <div className="flex gap-3 mt-2">
+                                        {!notif.read && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); markAsRead(notif.id); }}
+                                                className="text-xs font-medium text-indigo-600 hover:text-indigo-800 flex items-center"
+                                            >
+                                                <Check className="w-3 h-3 mr-1" /> Mark as read
+                                            </button>
+                                        )}
                                         <button
-                                            onClick={(e) => { e.stopPropagation(); markAsRead(notif.id); }}
-                                            className="mt-2 text-xs font-medium text-indigo-600 hover:text-indigo-800 flex items-center"
+                                            onClick={(e) => { e.stopPropagation(); dismiss(notif.id); }}
+                                            className="text-xs font-medium text-gray-400 hover:text-rose-600 flex items-center transition-colors"
                                         >
-                                            <Check className="w-3 h-3 mr-1" /> Mark as read
+                                            Dismiss
                                         </button>
-                                    )}
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>

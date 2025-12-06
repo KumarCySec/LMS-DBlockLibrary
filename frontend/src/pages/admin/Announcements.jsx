@@ -35,7 +35,7 @@ const Announcements = () => {
         try {
             const [rolesRes, deptsRes] = await Promise.all([
                 api.get('/admin/roles').catch(() => ({ data: [] })),
-                api.get('/admin/departments').catch(() => ({ data: [] }))
+                api.get('/common/departments').catch(() => ({ data: [] }))
             ]);
             setRoles(rolesRes.data || []);
             setDepartments(deptsRes.data || []);

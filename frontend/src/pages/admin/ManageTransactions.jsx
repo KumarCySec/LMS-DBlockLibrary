@@ -490,8 +490,14 @@ const ManageTransactions = () => {
                         {/* Additional Info */}
                         {(selectedTx.approved_by || selectedTx.rejected_by || selectedTx.rejection_reason) && (
                             <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 space-y-2">
-                                {selectedTx.approved_by && <p>Approved by: <span className="font-medium text-gray-900">{selectedTx.approved_by}</span></p>}
-                                {selectedTx.rejected_by && <p>Rejected by: <span className="font-medium text-gray-900">{selectedTx.rejected_by}</span></p>}
+                                {selectedTx.approved_by && <p>Checked Out By: <span className="font-medium text-gray-900">{selectedTx.approved_by}</span></p>}
+                                {selectedTx.processed_by && selectedTx.status === 'RETURNED' && (
+                                    <p>Returned By: <span className="font-medium text-gray-900">{selectedTx.processed_by}</span></p>
+                                )}
+                                {selectedTx.processed_by && selectedTx.status === 'ISSUED' && selectedTx.renewal_count > 0 && (
+                                    <p>Last Renewed By: <span className="font-medium text-gray-900">{selectedTx.processed_by}</span></p>
+                                )}
+                                {selectedTx.rejected_by && <p>Rejected By: <span className="font-medium text-gray-900">{selectedTx.rejected_by}</span></p>}
                                 {selectedTx.rejection_reason && (
                                     <div className="bg-rose-50 p-3 rounded border border-rose-100 text-rose-800">
                                         <span className="font-bold">Rejection Reason:</span> {selectedTx.rejection_reason}

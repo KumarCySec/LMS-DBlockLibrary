@@ -142,7 +142,7 @@ function App() {
 
                     <Route path="admin/announcements" element={<ProtectedRoute requiredPermission="manage_settings"><Announcements /></ProtectedRoute>} />
                     <Route path="admin/activity" element={<ProtectedRoute requiredPermission="view_analytics"><ActivityLog /></ProtectedRoute>} />
-                    <Route path="admin/outstanding" element={<ProtectedRoute requiredPermission="view_analytics"><CurrentOutstanding /></ProtectedRoute>} />
+                    <Route path="admin/inventory/outstanding" element={<ProtectedRoute requiredPermission="view_analytics"><CurrentOutstanding /></ProtectedRoute>} />
 
                     {/* Attendance */}
                     <Route path="attendance" element={<ProtectedRoute requiredAnyPermission={['manage_roster', 'view_analytics', 'update_library_status']}><Attendance /></ProtectedRoute>} />

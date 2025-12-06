@@ -61,6 +61,49 @@ def list_inventory():
         
     return jsonify(result), 200
 
+@inventory_bp.route('/outstanding', methods=['GET'])
+@jwt_required()
+def get_outstanding_items():
+    try:
+        # Get all active transactions
+        txs = Transaction.query.filter(Transaction.status.in_(['ISSUED', 'OVERDUE', 'RENEW_REQUESTED', 'RETURN_REQUESTED'])).order_by(Transaction.due_date.asc()).all()
+        
+        result = []
+        for tx in txs:
+            try:
+                days_overdue = 0
+                # Fix: due_date is DateTime, compare with datetime or convert to date
+                if tx.status == 'OVERDUE' or (tx.status == 'ISSUED' and tx.due_date < datetime.utcnow()):
+                    # Calculate days from due_date (datetime) to now (datetime)
+                    delta = datetime.utcnow() - tx.due_date
+                    days_overdue = delta.days
+                
+                result.append({
+                    "id": tx.id,
+                    "transaction_id": tx.transaction_id,
+                    "item_title": tx.item.title,
+                    "item_id": tx.item.id,
+                    "item_type": tx.item.type if tx.item else "Book", # Add item_type
+                    "copy_acc_no": tx.copy.acc_no if tx.copy else "N/A",
+                    "copy_acc": tx.copy.acc_no if tx.copy else "N/A", # Add copy_acc matching frontend
+                    "borrower_name": tx.borrower.name,
+                    "borrower_id": tx.borrower.id,
+                    "borrower_roll": tx.borrower.roll_number if tx.borrower else "N/A", # Add borrower_roll
+                    "borrower_dept": tx.borrower.department.name if tx.borrower.department else "N/A",
+                    "issue_date": tx.issue_date.isoformat() + 'Z' if tx.issue_date else None,
+                    "due_date": tx.due_date.isoformat() if tx.due_date else None, 
+                    "status": tx.status,
+                    "days_overdue": days_overdue if days_overdue > 0 else 0,
+                    "renewal_count": tx.renewal_count or 0
+                })
+            except Exception as e:
+                print(f"Error processing outstanding tx {tx.id}: {e}")
+                continue
+                
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch outstanding items", "details": str(e)}), 500
+
 @inventory_bp.route('/', methods=['POST'])
 @jwt_required()
 @permission_required('manage_inventory')
@@ -102,6 +145,7 @@ def add_inventory():
         specs=data.get('specs')
     )
     
+        
     db.session.add(new_item)
     db.session.flush() # Get ID
     
@@ -129,6 +173,19 @@ def add_inventory():
             
             db.session.add(copy)
             
+    # Log Activity
+    from models.misc import ActivityLog
+    try:
+        activity = ActivityLog(
+            user_id=get_jwt_identity(),
+            action_type='LIBRARY_ADD',
+            details=f"Added item: {new_item.title} ({quantity} copies)",
+            ip_address=request.remote_addr
+        )
+        db.session.add(activity)
+    except:
+        pass
+
     db.session.commit()
     
     return jsonify({"message": "Item added successfully", "id": new_item.id}), 201
@@ -140,7 +197,9 @@ def update_inventory(item_id):
     item = InventoryItem.query.get_or_404(item_id)
     data = request.get_json()
     
-    if 'title' in data:
+    changes = []
+    if 'title' in data and data['title'] != item.title:
+        changes.append(f"Title: {item.title} -> {data['title']}")
         item.title = data['title']
     if 'description' in data:
         item.description = data['description']
@@ -158,9 +217,25 @@ def update_inventory(item_id):
     # Handle quantity updates carefully
     if 'quantity_total' in data:
         diff = int(data['quantity_total']) - item.quantity_total
-        item.quantity_total = int(data['quantity_total'])
-        item.quantity_available += diff
+        if diff != 0:
+            changes.append(f"Quantity: {item.quantity_total} -> {data['quantity_total']}")
+            item.quantity_total = int(data['quantity_total'])
+            item.quantity_available += diff
         
+    # Log Activity
+    if changes:
+        from models.misc import ActivityLog
+        try:
+            activity = ActivityLog(
+                user_id=get_jwt_identity(),
+                action_type='LIBRARY_UPDATE',
+                details=f"Updated item {item.id}: {', '.join(changes)}",
+                ip_address=request.remote_addr
+            )
+            db.session.add(activity)
+        except:
+            pass
+
     db.session.commit()
     return jsonify({"message": "Item updated successfully"}), 200
 

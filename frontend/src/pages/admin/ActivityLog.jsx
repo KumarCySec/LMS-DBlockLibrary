@@ -11,19 +11,21 @@ const ActivityLog = () => {
     const [loading, setLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(new Date());
     const [filterType, setFilterType] = useState('ALL');
+    const [showAll, setShowAll] = useState(false);
 
     useEffect(() => {
         fetchLogs();
-    }, [currentDate, filterType]);
+    }, [currentDate, filterType, showAll]);
 
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const dateStr = format(currentDate, 'yyyy-MM-dd');
             const params = {
-                date: dateStr,
-                per_page: 100 // Fetch more for daily view
+                per_page: 100
             };
+            if (!showAll) {
+                params.date = format(currentDate, 'yyyy-MM-dd');
+            }
             if (filterType !== 'ALL') params.type = filterType;
 
             const res = await api.get('/activity', { params });
@@ -73,34 +75,42 @@ const ActivityLog = () => {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                         <Activity className="w-6 h-6 text-indigo-600" />
-                        Daily Activity Log
+                        {showAll ? 'Activity History' : 'Daily Activity Log'}
                     </h1>
-                    <p className="text-gray-500">Track all library actions for {format(currentDate, 'MMMM d, yyyy')}</p>
+                    <p className="text-gray-500">
+                        {showAll ? 'Showing detailed history of all library actions' : `Track all library actions for ${format(currentDate, 'MMMM d, yyyy')}`}
+                    </p>
                 </div>
                 <div className="flex gap-2">
+                    <Button variant={showAll ? "secondary" : "outline"} onClick={() => setShowAll(!showAll)}>
+                        {showAll ? 'Show Daily View' : 'View All History'}
+                    </Button>
                     <Button variant="outline" onClick={() => fetchLogs()} disabled={loading}>
                         <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} /> Refresh
                     </Button>
                     <Button variant="outline" onClick={handleExport} disabled={logs.length === 0}>
-                        <Download className="w-4 h-4 mr-2" /> Export Day
+                        <Download className="w-4 h-4 mr-2" /> Export
                     </Button>
                 </div>
             </div>
 
             {/* Date Surfing & Filters */}
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
-                <div className="flex items-center gap-4 bg-gray-50 p-1 rounded-xl">
-                    <Button variant="ghost" size="sm" onClick={() => setCurrentDate(subDays(currentDate, 1))}>
-                        <ChevronLeft className="w-5 h-5" />
-                    </Button>
-                    <div className="flex items-center gap-2 px-2 min-w-[140px] justify-center font-medium text-gray-700">
-                        <Calendar className="w-4 h-4 text-indigo-500" />
-                        {isSameDay(currentDate, new Date()) ? 'Today' : format(currentDate, 'MMM d, yyyy')}
+                {!showAll && (
+                    <div className="flex items-center gap-4 bg-gray-50 p-1 rounded-xl">
+                        <Button variant="ghost" size="sm" onClick={() => setCurrentDate(subDays(currentDate, 1))}>
+                            <ChevronLeft className="w-5 h-5" />
+                        </Button>
+                        <div className="flex items-center gap-2 px-2 min-w-[140px] justify-center font-medium text-gray-700">
+                            <Calendar className="w-4 h-4 text-indigo-500" />
+                            {isSameDay(currentDate, new Date()) ? 'Today' : format(currentDate, 'MMM d, yyyy')}
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => setCurrentDate(addDays(currentDate, 1))} disabled={isSameDay(currentDate, new Date())}>
+                            <ChevronRight className="w-5 h-5" />
+                        </Button>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => setCurrentDate(addDays(currentDate, 1))} disabled={isSameDay(currentDate, new Date())}>
-                        <ChevronRight className="w-5 h-5" />
-                    </Button>
-                </div>
+                )}
+                {showAll && <div className="text-sm font-medium text-gray-500 italic">Showing most recent activities</div>}
 
                 <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
                     {['ALL', 'CHECKOUT', 'RETURN', 'RENEW', 'PUNCH', 'LIBRARY'].map(type => (

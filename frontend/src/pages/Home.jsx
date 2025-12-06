@@ -6,7 +6,7 @@ import { Button } from '../components/ui/Button';
 import {
     CheckCircle, UserPlus, Bell, Clock, Activity, Loader2, Calendar,
     Users, Phone, Mail, Building, Zap, Search, Package, BarChart2,
-    History, BookOpen, Settings, Upload, FileText, UserCog, Heart, Shield
+    History, BookOpen, Settings, Upload, FileText, UserCog, Heart, Shield, X
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getPrimaryRole, hasAnyPermission } from '../utils/permissions';
@@ -27,28 +27,56 @@ const Home = () => {
     const [selectedUser, setSelectedUser] = useState(null);
     const [showCheckout, setShowCheckout] = useState(false);
 
+    const [statusModalOpen, setStatusModalOpen] = useState(false);
+
+    const handleStatusClick = () => {
+        if (hasAnyPermission(user, ['update_library_status'])) {
+            setStatusModalOpen(true);
+        } else if (status?.is_open) {
+            setActiveUsersModalOpen(true);
+        }
+    };
+
+    const handleStatusUpdate = async (isOpen, message) => {
+        try {
+            await api.post('/common/status', { is_open: isOpen, message });
+            await fetchData();
+            setStatusModalOpen(false);
+        } catch (error) {
+            console.error("Failed to update status", error);
+            alert("Failed to update status");
+        }
+    };
+
     const fetchData = async () => {
         try {
-            const results = await Promise.all([
+            // Public/Common endpoints
+            const commonPromises = [
                 api.get('/common/status'),
                 api.get('/roster/today'),
                 api.get('/attendance/active'),
-                Promise.resolve({ data: [] }),
-                api.get('/users/?status=pending_approval'),
                 api.get('/transactions/my')
-            ]);
+            ];
 
-            setStatus(results[0].data);
-            setRoster(results[1].data);
-            setActiveUsers(results[2].data || []);
+            const [statusRes, rosterRes, activeRes, myTxsRes] = await Promise.all(commonPromises);
 
-            const myTxs = results[5].data || [];
+            setStatus(statusRes.data);
+            setRoster(rosterRes.data);
+            setActiveUsers(activeRes.data || []);
+
+            const myTxs = myTxsRes.data || [];
             const activeLoans = myTxs.filter(t => t.status === 'ISSUED').length;
             const overdue = myTxs.filter(t => t.status === 'OVERDUE' || (t.status === 'ISSUED' && new Date(t.due_date) < new Date())).length;
 
+            // Admin-only endpoints (Pending Users)
             let pendingCount = 0;
-            if (results[4] && Array.isArray(results[4].data)) {
-                pendingCount = results[4].data.length;
+            if (hasAnyPermission(user, ['approve_users'])) {
+                try {
+                    const pendingRes = await api.get('/users/?status=pending_approval');
+                    pendingCount = pendingRes.data.length;
+                } catch (e) {
+                    console.warn("Failed to fetch pending users", e);
+                }
             }
 
             setStats({
@@ -66,7 +94,12 @@ const Home = () => {
     };
 
     useEffect(() => {
-        if (user) fetchData();
+        if (user) {
+            fetchData();
+            // Poll every 10 seconds to keep status in sync
+            const interval = setInterval(fetchData, 10000);
+            return () => clearInterval(interval);
+        }
     }, [user]);
 
     if (loading) {
@@ -275,12 +308,15 @@ const Home = () => {
                     </Card>
                 </div>
 
-                {/* 2. Live Status Card (Merged Status & Volunteers) */}
+                {/* 2. Live Status Card (Merged Status & Attendance) */}
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 divide-y md:divide-y-0 md:divide-x divide-gray-100">
 
-                    {/* Left: Library Status */}
-                    <div className="md:w-1/2 flex flex-col justify-center cursor-pointer active:opacity-70 transition-opacity" onClick={() => status?.is_open && setActiveUsersModalOpen(true)}>
-                        <div className="flex justify-between items-center mb-2">
+                    {/* Left: Library Status & Controls */}
+                    <div className="md:w-1/2 flex flex-col justify-center">
+                        <div
+                            className="flex justify-between items-center mb-2 cursor-pointer active:opacity-70 transition-opacity"
+                            onClick={handleStatusClick}
+                        >
                             <h3 className="font-bold text-gray-900">Library Status</h3>
                             {status?.is_open ? (
                                 <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase">OPEN</span>
@@ -288,18 +324,31 @@ const Home = () => {
                                 <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase">CLOSED</span>
                             )}
                         </div>
-                        <p className="text-xs text-gray-500 flex items-center gap-1">
-                            {status?.is_open
-                                ? <>Opened by <span className="font-medium text-gray-800">{status.opened_by || 'Volunteer'}</span> at {new Date(status.opened_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</>
-                                : "Library is currently closed."}
-                        </p>
+
+                        <div className="flex items-center gap-2 mt-1" onClick={() => setActiveUsersModalOpen(true)}>
+                            <div className="flex -space-x-2 cursor-pointer hover:scale-105 transition-transform">
+                                {activeUsers.slice(0, 3).map((u, i) => (
+                                    <div key={i} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600">
+                                        {u.name[0]}
+                                    </div>
+                                ))}
+                                {activeUsers.length === 0 && (
+                                    <div className="w-6 h-6 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-[10px] text-gray-400">
+                                        <Users className="w-3 h-3" />
+                                    </div>
+                                )}
+                            </div>
+                            <span className="text-xs text-gray-500 font-medium cursor-pointer hover:text-indigo-600 hover:underline">
+                                {activeUsers.length > 0 ? `${activeUsers.length} Volunteers on duty` : "No one currently punched in"}
+                            </span>
+                        </div>
                     </div>
 
-                    {/* Right: Today's Volunteers */}
+                    {/* Right: Today's Scheduler (Roster) */}
                     <div className="md:w-1/2 pt-4 md:pt-0 md:pl-4">
                         <div className="flex justify-between items-center mb-3">
                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                {todayRoster?.department ? `${todayRoster.department} ON DUTY` : 'NO ROSTER'}
+                                {roster ? `${roster.department?.name || 'ASSIGNED'} ON DUTY` : 'NO ROSTER SCHEDULED'}
                             </span>
                         </div>
 
@@ -321,7 +370,9 @@ const Home = () => {
                                     </div>
                                 ))
                             ) : (
-                                <span className="text-xs text-gray-400 italic">No volunteers assigned</span>
+                                <span className="text-xs text-gray-400 italic">
+                                    {roster ? "Volunteers not linked to accounts" : "No volunteers assigned for today"}
+                                </span>
                             )}
                         </div>
                     </div>
@@ -352,6 +403,36 @@ const Home = () => {
                 </div>
 
             </div>
+
+            {/* Status Update Modal */}
+            {statusModalOpen && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 animate-in zoom-in-95 duration-300">
+                        <h3 className="text-lg font-bold text-gray-900 mb-4">Update Library Status</h3>
+                        <div className="space-y-3">
+                            <button
+                                onClick={() => handleStatusUpdate(true, "Library is Open")}
+                                className="w-full flex items-center justify-center gap-2 p-4 bg-emerald-100 text-emerald-700 rounded-xl font-bold hover:bg-emerald-200 transition-colors"
+                            >
+                                <CheckCircle className="w-5 h-5" /> Open Library
+                            </button>
+                            <button
+                                onClick={() => handleStatusUpdate(false, "Library Closed")}
+                                className="w-full flex items-center justify-center gap-2 p-4 bg-rose-100 text-rose-700 rounded-xl font-bold hover:bg-rose-200 transition-colors"
+                            >
+                                <X className="w-5 h-5" /> Close Library
+                            </button>
+                            <div className="my-2 border-t border-gray-100"></div>
+                            <button
+                                onClick={() => setStatusModalOpen(false)}
+                                className="w-full py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Active Users Modal */}
             {activeUsersModalOpen && (

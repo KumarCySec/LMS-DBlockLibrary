@@ -11,6 +11,9 @@ const ManageRoster = () => {
     const [users, setUsers] = useState([]); // Users in selected department
     const [loading, setLoading] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
+    const [selectedBatch, setSelectedBatch] = useState('');
+
+    const filteredUsers = users.filter(u => !selectedBatch || u.batch === selectedBatch);
 
     const [formData, setFormData] = useState({
         department_id: '',
@@ -175,6 +178,21 @@ const ManageRoster = () => {
                             </select>
                         </div>
 
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Batch</label>
+                            <select
+                                value={selectedBatch}
+                                onChange={(e) => setSelectedBatch(e.target.value)}
+                                className="w-full p-2 border rounded-lg bg-white"
+                                disabled={!formData.department_id}
+                            >
+                                <option value="">All Batches</option>
+                                {['2022', '2023', '2024', '2025'].map(b => (
+                                    <option key={b} value={b}>{b}</option>
+                                ))}
+                            </select>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Volunteer 1 (Primary)</label>
@@ -185,7 +203,7 @@ const ManageRoster = () => {
                                     disabled={!formData.department_id}
                                 >
                                     <option value="">Select User</option>
-                                    {users.map(u => (
+                                    {filteredUsers.map(u => (
                                         <option key={u.id} value={u.id}>{u.name} ({u.roll_number})</option>
                                     ))}
                                 </select>
@@ -199,7 +217,7 @@ const ManageRoster = () => {
                                     disabled={!formData.department_id}
                                 >
                                     <option value="">Select User (Optional)</option>
-                                    {users.map(u => (
+                                    {filteredUsers.map(u => (
                                         <option key={u.id} value={u.id}>{u.name} ({u.roll_number})</option>
                                     ))}
                                 </select>

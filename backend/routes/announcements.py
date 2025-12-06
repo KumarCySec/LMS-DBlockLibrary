@@ -7,7 +7,7 @@ from utils.decorators import permission_required
 
 announcements_bp = Blueprint('announcements', __name__)
 
-@announcements_bp.route('/', methods=['GET'])
+@announcements_bp.route('', methods=['GET'])
 @jwt_required()
 def get_announcements():
     # Return all for admin, or targeted for user
@@ -23,7 +23,7 @@ def get_announcements():
         "created_by": a.created_by.name if a.created_by else "Unknown"
     } for a in anns]), 200
 
-@announcements_bp.route('/', methods=['POST'])
+@announcements_bp.route('', methods=['POST'])
 @jwt_required()
 @permission_required('manage_settings') # Assuming admin/incharge
 def create_announcement():

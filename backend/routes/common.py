@@ -159,6 +159,18 @@ def mark_read(notif_id):
     db.session.commit()
     return jsonify({"message": "Marked as read"}), 200
 
+@common_bp.route('/notifications/<int:notif_id>/clear', methods=['POST'])
+@jwt_required()
+def clear_notification(notif_id):
+    notif = Notification.query.get_or_404(notif_id)
+    if notif.user_id != int(get_jwt_identity()):
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    notif.archived = True
+    notif.read_flag = True
+    db.session.commit()
+    return jsonify({"message": "Notification cleared"}), 200
+
 # --- Waitlist ---
 
 @common_bp.route('/waitlist', methods=['POST'])
