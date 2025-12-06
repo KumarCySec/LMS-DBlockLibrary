@@ -2,16 +2,20 @@ from flask import Blueprint, request, jsonify
 from extensions import db
 from models.misc import AttendanceLog, VolunteerSchedule
 from models.users import User
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask_jwt_extended import jwt_required, get_jwt_identity
+
+def get_today_date():
+    # IST is UTC + 5:30
+    return (datetime.utcnow() + timedelta(hours=5, minutes=30)).date()
 
 attendance_bp = Blueprint('attendance', __name__)
 
 @attendance_bp.route('/status', methods=['GET'])
 @jwt_required()
 def get_status():
-    current_user_id = get_jwt_identity()
-    today = datetime.utcnow().date()
+    current_user_id = int(get_jwt_identity())
+    today = get_today_date()
     
     # Check if scheduled today
     schedule = VolunteerSchedule.query.filter_by(date=today).filter(
@@ -42,8 +46,8 @@ def get_status():
 @attendance_bp.route('/check-in', methods=['POST'])
 @jwt_required()
 def check_in():
-    current_user_id = get_jwt_identity()
-    today = datetime.utcnow().date()
+    current_user_id = int(get_jwt_identity())
+    today = get_today_date()
     
     # Verify Schedule
     schedule = VolunteerSchedule.query.filter_by(date=today).filter(
@@ -67,6 +71,17 @@ def check_in():
     )
     
     db.session.add(log)
+    
+    # Log Activity
+    from models.misc import ActivityLog
+    activity = ActivityLog(
+        user_id=current_user_id,
+        action_type='PUNCH_IN',
+        details=f"Checked in at {log.check_in_time.strftime('%H:%M')}",
+        ip_address=request.remote_addr
+    )
+    db.session.add(activity)
+    
     db.session.commit()
     
     return jsonify({"message": "Checked in successfully", "time": log.check_in_time.isoformat()}), 200
@@ -74,8 +89,8 @@ def check_in():
 @attendance_bp.route('/check-out', methods=['POST'])
 @jwt_required()
 def check_out():
-    current_user_id = get_jwt_identity()
-    today = datetime.utcnow().date()
+    current_user_id = int(get_jwt_identity())
+    today = get_today_date()
     
     log = AttendanceLog.query.filter_by(user_id=current_user_id, date=today, status='ACTIVE').first()
     
@@ -88,6 +103,16 @@ def check_out():
     # Calculate duration
     duration = (log.check_out_time - log.check_in_time).total_seconds() / 60
     log.duration_minutes = int(duration)
+    
+    # Log Activity
+    from models.misc import ActivityLog
+    activity = ActivityLog(
+        user_id=current_user_id,
+        action_type='PUNCH_OUT',
+        details=f"Checked out at {log.check_out_time.strftime('%H:%M')}. Duration: {int(duration)} min",
+        ip_address=request.remote_addr
+    )
+    db.session.add(activity)
     
     db.session.commit()
     
@@ -110,3 +135,21 @@ def get_history():
         "duration": l.duration_minutes,
         "status": l.status
     } for l in logs]), 200
+
+@attendance_bp.route('/active', methods=['GET'])
+@jwt_required()
+def get_active_attendance():
+    # Get all active logs for today
+    today = get_today_date()
+    logs = AttendanceLog.query.filter_by(date=today, status='ACTIVE').all()
+    
+    active_users = []
+    for log in logs:
+        if log.user:
+            active_users.append({
+                "id": log.user.id,
+                "name": log.user.name,
+                "check_in": log.check_in_time.isoformat()
+            })
+            
+    return jsonify(active_users), 200

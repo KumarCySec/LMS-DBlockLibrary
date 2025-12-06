@@ -50,14 +50,15 @@ def seed_permissions():
                 if p not in admin_role.permissions:
                     admin_role.permissions.append(p)
         
-        # Assign staff_checkout to Incharge and Volunteer
-        staff_perm = Permission.query.filter_by(name='staff_checkout').first()
-        if staff_perm:
-            for role_name in ['Incharge', 'Volunteer']:
-                role = Role.query.filter_by(name=role_name).first()
-                if role and staff_perm not in role.permissions:
-                    role.permissions.append(staff_perm)
-                    print(f"Added staff_checkout to {role_name}")
+        # Assign staff_checkout and update_library_status to Incharge and Volunteer
+        staff_perms = Permission.query.filter(Permission.name.in_(['staff_checkout', 'update_library_status'])).all()
+        for role_name in ['Incharge', 'Volunteer']:
+            role = Role.query.filter_by(name=role_name).first()
+            if role:
+                for p in staff_perms:
+                    if p not in role.permissions:
+                        role.permissions.append(p)
+                        print(f"Added {p.name} to {role_name}")
 
         db.session.commit()
         print("Assigned all permissions.")

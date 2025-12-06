@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from extensions import db
 from models import LibraryStatus, Notification, Waitlist, User, InventoryItem, Department
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from datetime import datetime
+from datetime import datetime, timedelta
 from utils.decorators import role_required, permission_required
 
 common_bp = Blueprint('common', __name__)
@@ -82,6 +82,18 @@ def update_status():
             last_updated_by=current_user_id
         )
         db.session.add(new_status)
+        
+        # Log Activity
+        from models.misc import ActivityLog
+        action = 'LIBRARY_OPEN' if is_open else 'LIBRARY_CLOSE'
+        activity = ActivityLog(
+            user_id=current_user_id,
+            action_type=action,
+            details=f"Library {'opened' if is_open else 'closed'}: {message}",
+            ip_address=request.remote_addr
+        )
+        db.session.add(activity)
+        
         db.session.commit()
         return jsonify({"success": True, "message": "Status updated"}), 200
     except Exception as e:
@@ -114,7 +126,8 @@ def get_notifications():
             "body": n.body,
             "read": n.read_flag,
             "archived": n.archived,
-            "date": n.created_at
+            "date": n.created_at,
+            "related_transaction_id": n.related_transaction_id
         })
     return jsonify(result), 200
 
@@ -218,7 +231,7 @@ def request_open():
     current_user_id = get_jwt_identity()
     user = User.query.get(current_user_id)
     
-    today = datetime.utcnow().date()
+    today = (datetime.utcnow() + timedelta(hours=5, minutes=30)).date()
     schedule = VolunteerSchedule.query.filter_by(date=today).first()
     
     target_user_ids = set()

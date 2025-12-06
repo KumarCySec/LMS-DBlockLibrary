@@ -5,7 +5,7 @@ import { cn } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
 
-const BottomNav = () => {
+const BottomNav = ({ unreadCount = 0 }) => {
     const location = useLocation();
     const { user } = useAuth();
 
@@ -35,11 +35,18 @@ const BottomNav = () => {
                             key={item.path}
                             to={item.path}
                             className={cn(
-                                'flex flex-col items-center justify-center w-full h-full space-y-1',
+                                'flex flex-col items-center justify-center w-full h-full space-y-1 relative',
                                 isActive ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-900'
                             )}
                         >
-                            <Icon className="w-6 h-6" />
+                            <div className="relative">
+                                <Icon className="w-6 h-6" />
+                                {item.label === 'Alerts' && unreadCount > 0 && (
+                                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] flex items-center justify-center border-2 border-white">
+                                        {unreadCount > 99 ? '99+' : unreadCount}
+                                    </span>
+                                )}
+                            </div>
                             <span className="text-xs font-medium">{item.label}</span>
                         </Link>
                     );

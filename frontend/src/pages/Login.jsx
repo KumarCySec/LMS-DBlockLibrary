@@ -42,7 +42,7 @@ const Login = () => {
                 <div className="flex flex-col items-center text-center gap-2 animate-fade-in-down">
                     <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6">
                         <div className="p-3 bg-white rounded-2xl shadow-sm border border-indigo-50">
-                            <img src={gceLogo} alt="GCE Logo" className="w-16 md:w-20 h-auto object-contain" />
+                            <img src={gceLogo} alt="GCE Logo" className="w-20 md:w-20 h-auto object-contain" />
                         </div>
                         <h1 className="text-xl md:text-3xl font-bold text-slate-800 tracking-tight">
                             Government College of Engineering, Erode

@@ -183,7 +183,7 @@ const ItemDetail = () => {
                                 <div>
                                     <span className="block text-gray-500">Donor</span>
                                     {item.donor ? (
-                                        <Link to={`/admin/donors/${item.donor.id}`} className="text-indigo-600 hover:underline font-medium">
+                                        <Link to={`/donors/${item.donor.id}`} className="text-indigo-600 hover:underline font-medium">
                                             {item.donor.name}
                                             {(item.donor.branch || item.donor.batch) && (
                                                 <span className="text-xs text-gray-500 block font-normal">

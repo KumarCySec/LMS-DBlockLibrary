@@ -129,3 +129,47 @@ def get_donor_stats():
     except Exception as e:
         logger.error(f"Error in donor-stats: {str(e)}")
         return jsonify([]), 200
+@analytics_bp.route('/volunteers', methods=['GET'])
+@jwt_required()
+@permission_required('view_analytics')
+def get_volunteer_analytics():
+    try:
+        from models.misc import AttendanceLog, VolunteerSchedule
+        
+        # 1. Monitoring Hours by Volunteer
+        hours_results = db.session.query(
+            User.name,
+            func.sum(AttendanceLog.duration_minutes).label('total_minutes'),
+            func.count(AttendanceLog.id).label('shifts_completed')
+        ).join(AttendanceLog, AttendanceLog.user_id == User.id)\
+         .group_by(User.id).order_by(desc('total_minutes')).all()
+         
+        hours_data = [
+            {
+                "name": r.name,
+                "total_hours": round((r.total_minutes or 0) / 60, 1),
+                "shifts": r.shifts_completed
+            } for r in hours_results
+        ]
+        
+        # 2. Shifts by Department (Scheduled)
+        dept_results = db.session.query(
+            Department.name,
+            func.count(VolunteerSchedule.id).label('shift_count')
+        ).join(VolunteerSchedule, VolunteerSchedule.department_id == Department.id)\
+         .group_by(Department.id).order_by(desc('shift_count')).all()
+         
+        dept_data = [
+            {
+                "department": r.name,
+                "shifts_scheduled": r.shift_count
+            } for r in dept_results
+        ]
+        
+        return jsonify({
+            "hours_by_volunteer": hours_data,
+            "shifts_by_department": dept_data
+        }), 200
+    except Exception as e:
+        logger.error(f"Error in volunteer-analytics: {str(e)}")
+        return jsonify({"hours_by_volunteer": [], "shifts_by_department": []}), 200

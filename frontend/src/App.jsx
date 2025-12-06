@@ -32,11 +32,15 @@ import TransactionApprovals from './pages/common/TransactionApprovals';
 import ManageDonors from './pages/admin/ManageDonors';
 import DonorDetail from './pages/admin/DonorDetail';
 import Analytics from './pages/admin/Analytics';
+import VolunteerAnalytics from './pages/admin/VolunteerAnalytics';
 
 import AddItem from './pages/admin/AddItem';
 import AddDonor from './pages/admin/AddDonor';
 import ImportData from './pages/admin/ImportData';
 import Attendance from './pages/Attendance';
+import Announcements from './pages/admin/Announcements';
+import ActivityLog from './pages/admin/ActivityLog';
+import CurrentOutstanding from './pages/admin/CurrentOutstanding';
 
 const ProtectedRoute = ({ children, requiredRole, requiredPermission, requiredAnyPermission }) => {
     const { user, loading, error, hasRole, hasPermission } = useAuth();
@@ -98,6 +102,7 @@ function App() {
                     <Route path="my-borrowings" element={<MyBorrowings />} />
                     <Route path="notifications" element={<Notifications />} />
                     <Route path="profile" element={<Profile />} />
+                    <Route path="donors/:donorId" element={<ProtectedRoute><DonorDetail /></ProtectedRoute>} />
 
                     {/* Staff Routes */}
                     <Route path="approvals" element={
@@ -109,6 +114,7 @@ function App() {
                     {/* Admin Routes */}
                     <Route path="admin" element={<ProtectedRoute requiredRole="Admin"><AdminDashboard /></ProtectedRoute>} />
                     <Route path="admin/analytics" element={<ProtectedRoute requiredPermission="view_analytics"><Analytics /></ProtectedRoute>} />
+                    <Route path="admin/volunteer-analytics" element={<ProtectedRoute requiredPermission="view_analytics"><VolunteerAnalytics /></ProtectedRoute>} />
 
                     <Route path="admin/inventory" element={<ProtectedRoute requiredPermission="manage_inventory"><ManageInventory /></ProtectedRoute>} />
                     <Route path="admin/inventory/add" element={<ProtectedRoute requiredPermission="manage_inventory"><AddItem /></ProtectedRoute>} />
@@ -130,10 +136,16 @@ function App() {
                     <Route path="admin/donors/add" element={<ProtectedRoute requiredPermission="manage_donors"><AddDonor /></ProtectedRoute>} />
                     <Route path="admin/donors/:donorId" element={<ProtectedRoute requiredPermission="manage_donors"><DonorDetail /></ProtectedRoute>} />
 
+
+
                     <Route path="admin/import" element={<ProtectedRoute requiredPermission="import_data"><ImportData /></ProtectedRoute>} />
 
+                    <Route path="admin/announcements" element={<ProtectedRoute requiredPermission="manage_settings"><Announcements /></ProtectedRoute>} />
+                    <Route path="admin/activity" element={<ProtectedRoute requiredPermission="view_analytics"><ActivityLog /></ProtectedRoute>} />
+                    <Route path="admin/outstanding" element={<ProtectedRoute requiredPermission="view_analytics"><CurrentOutstanding /></ProtectedRoute>} />
+
                     {/* Attendance */}
-                    <Route path="attendance" element={<ProtectedRoute requiredAnyPermission={['manage_roster', 'view_analytics']}><Attendance /></ProtectedRoute>} />
+                    <Route path="attendance" element={<ProtectedRoute requiredAnyPermission={['manage_roster', 'view_analytics', 'update_library_status']}><Attendance /></ProtectedRoute>} />
                 </Route>
             </Routes>
         </>

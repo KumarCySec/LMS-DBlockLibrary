@@ -128,6 +128,8 @@ const Notifications = () => {
                                     navigate('/my-borrowings');
                                 } else if (notif.type === 'waitlist_available' && notif.related_item_id) {
                                     navigate(`/catalog/${notif.related_item_id}`);
+                                } else if (notif.type === 'request_open') {
+                                    navigate('/admin/status');
                                 }
 
                                 // Mark as read when clicked

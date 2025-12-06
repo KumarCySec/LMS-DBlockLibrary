@@ -10,6 +10,7 @@ const ManageRoster = () => {
     const [departments, setDepartments] = useState([]);
     const [users, setUsers] = useState([]); // Users in selected department
     const [loading, setLoading] = useState(false);
+    const [selectedUser, setSelectedUser] = useState(null);
 
     const [formData, setFormData] = useState({
         department_id: '',
@@ -107,8 +108,20 @@ const ManageRoster = () => {
                             {roster ? (
                                 <div className="mt-2 p-3 bg-green-50 rounded border border-green-100">
                                     <p className="font-bold text-green-800">{roster.department?.name}</p>
-                                    <p className="text-green-700">{roster.volunteer1?.name}</p>
-                                    {roster.volunteer2 && <p className="text-green-700">{roster.volunteer2?.name}</p>}
+                                    <p
+                                        className="text-green-700 cursor-pointer hover:underline"
+                                        onClick={() => setSelectedUser(roster.volunteer1)}
+                                    >
+                                        {roster.volunteer1?.name}
+                                    </p>
+                                    {roster.volunteer2 && (
+                                        <p
+                                            className="text-green-700 cursor-pointer hover:underline"
+                                            onClick={() => setSelectedUser(roster.volunteer2)}
+                                        >
+                                            {roster.volunteer2?.name}
+                                        </p>
+                                    )}
                                 </div>
                             ) : (
                                 <p className="mt-2 italic">No roster set for this date.</p>
@@ -116,6 +129,29 @@ const ManageRoster = () => {
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Contact Info Modal */}
+                {selectedUser && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                        <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full relative">
+                            <button
+                                onClick={() => setSelectedUser(null)}
+                                className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+                            >
+                                ✕
+                            </button>
+                            <h3 className="text-lg font-bold mb-4">Volunteer Details</h3>
+                            <div className="space-y-2">
+                                <p><span className="font-semibold">Name:</span> {selectedUser.name}</p>
+                                <p><span className="font-semibold">Phone:</span> {selectedUser.phone || 'N/A'}</p>
+                                <p><span className="font-semibold">Email:</span> {selectedUser.email || 'N/A'}</p>
+                            </div>
+                            <div className="mt-6 flex justify-end">
+                                <Button onClick={() => setSelectedUser(null)}>Close</Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Right: Assignment Form */}
                 <Card className="md:col-span-2">

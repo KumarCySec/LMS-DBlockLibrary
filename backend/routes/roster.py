@@ -27,7 +27,7 @@ def get_roster():
     else:
         # Default to next 30 days if no end date
         if not start_date_str:
-            today = datetime.utcnow().date()
+            today = datetime.now().date()
             query = query.filter(VolunteerSchedule.date >= today)
             
     schedules = query.order_by(VolunteerSchedule.date).all()
@@ -42,8 +42,8 @@ def get_roster():
             "id": s.id,
             "date": s.date.isoformat(),
             "department": {"id": dept.id, "name": dept.name} if dept else None,
-            "volunteer1": {"id": v1.id, "name": v1.name} if v1 else None,
-            "volunteer2": {"id": v2.id, "name": v2.name} if v2 else None
+            "volunteer1": {"id": v1.id, "name": v1.name, "phone": v1.phone_number, "email": v1.email} if v1 else None,
+            "volunteer2": {"id": v2.id, "name": v2.name, "phone": v2.phone_number, "email": v2.email} if v2 else None
         })
         
     return jsonify(result), 200
@@ -80,7 +80,8 @@ def update_roster():
 
 @roster_bp.route('/today', methods=['GET'])
 def get_today_roster():
-    today = datetime.utcnow().date()
+    # IST Fix
+    today = (datetime.utcnow() + timedelta(hours=5, minutes=30)).date()
     s = VolunteerSchedule.query.filter_by(date=today).first()
     
     if not s:
@@ -93,6 +94,6 @@ def get_today_roster():
     return jsonify({
         "date": s.date.isoformat(),
         "department": {"id": dept.id, "name": dept.name} if dept else None,
-        "volunteer1": {"id": v1.id, "name": v1.name} if v1 else None,
-        "volunteer2": {"id": v2.id, "name": v2.name} if v2 else None
+        "volunteer1": {"id": v1.id, "name": v1.name, "phone": v1.phone_number, "email": v1.email} if v1 else None,
+        "volunteer2": {"id": v2.id, "name": v2.name, "phone": v2.phone_number, "email": v2.email} if v2 else None
     }), 200

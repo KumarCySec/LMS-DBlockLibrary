@@ -67,9 +67,14 @@ const Analytics = () => {
         <div className="p-4 space-y-6 pb-24 max-w-6xl mx-auto">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
-                <Button size="sm" variant="ghost" onClick={fetchAnalytics}>
-                    <RefreshCw className="w-4 h-4" />
-                </Button>
+                <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => window.location.href = '/admin/volunteer-analytics'}>
+                        Volunteer Stats
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={fetchAnalytics}>
+                        <RefreshCw className="w-4 h-4" />
+                    </Button>
+                </div>
             </div>
 
             {/* Overview Cards */}

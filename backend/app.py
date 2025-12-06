@@ -29,6 +29,8 @@ def create_app(config_class=Config):
     from routes.inventory_export import inventory_export_bp
     from routes.roster import roster_bp
     from routes.attendance import attendance_bp
+    from routes.announcements import announcements_bp
+    from routes.activity import activity_bp
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api/users')
     app.register_blueprint(inventory_bp, url_prefix='/api/inventory')
@@ -40,6 +42,8 @@ def create_app(config_class=Config):
     app.register_blueprint(inventory_export_bp, url_prefix='/api/export')
     app.register_blueprint(roster_bp, url_prefix='/api/roster')
     app.register_blueprint(attendance_bp, url_prefix='/api/attendance')
+    app.register_blueprint(announcements_bp, url_prefix='/api/announcements')
+    app.register_blueprint(activity_bp, url_prefix='/api/activity')
 
     @app.route('/')
     def index():

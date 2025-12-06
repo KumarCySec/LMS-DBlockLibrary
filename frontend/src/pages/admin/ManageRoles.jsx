@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Loader2, Shield, Save, Check, Box, Users, Settings, FileText, ChevronDown, ChevronRight, Info } from 'lucide-react';
@@ -16,7 +17,7 @@ const PERMISSION_CATEGORIES = {
         icon: FileText,
         color: 'text-emerald-600',
         bg: 'bg-emerald-50',
-        permissions: ['manage_transactions', 'approve_checkout', 'approve_return', 'approve_renew']
+        permissions: ['manage_transactions', 'approve_checkout', 'approve_return', 'approve_renew', 'staff_checkout']
     },
     Users: {
         icon: Users,
@@ -28,11 +29,21 @@ const PERMISSION_CATEGORIES = {
         icon: Settings,
         color: 'text-gray-600',
         bg: 'bg-gray-50',
-        permissions: ['manage_settings', 'view_analytics']
+        permissions: ['manage_settings', 'view_analytics', 'update_library_status']
     }
 };
 
+const PERMISSION_DISPLAY_NAMES = {
+    'update_library_status': 'Manage Attendance & Status',
+    'view_analytics': 'View Analytics & Activity Logs',
+    'manage_roster': 'Manage Duty Roster',
+    'manage_inventory': 'Manage Inventory Items',
+    'manage_users': 'Manage Users & Roles',
+    'staff_checkout': 'Staff Checkout (Auto-Approve)'
+};
+
 const ManageRoles = () => {
+    const { user, refreshProfile } = useAuth(); // Get refreshProfile
     const [roles, setRoles] = useState([]);
     const [allPermissions, setAllPermissions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -99,8 +110,13 @@ const ManageRoles = () => {
         setSaving(role.id);
         try {
             await api.post(`/admin/roles/${role.id}/permissions`, { permissions: role.permissions });
+
+            // Refresh the current user's profile to reflect changes immediately if they hold this role
+            await refreshProfile();
+
             // Show success feedback (could be a toast, for now just console)
             console.log("Saved successfully");
+            alert("Permissions saved successfully!");
         } catch (error) {
             console.error("Failed to save permissions", error);
             alert("Failed to save permissions");
@@ -266,7 +282,7 @@ const ManageRoles = () => {
                                                                             "block text-sm font-bold mb-0.5",
                                                                             isSelected ? "text-indigo-900" : "text-gray-700"
                                                                         )}>
-                                                                            {permName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                                                            {PERMISSION_DISPLAY_NAMES[permName] || permName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                                                                         </span>
                                                                         <span className="block text-xs text-gray-500 leading-relaxed">
                                                                             {permDetails?.description || "Controls access to this feature"}

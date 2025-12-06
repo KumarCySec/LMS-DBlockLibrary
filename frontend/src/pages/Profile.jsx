@@ -195,6 +195,23 @@ const Profile = () => {
                     <Button variant="danger" className="w-full shadow-sm" onClick={logout}>
                         <LogOut className="w-4 h-4 mr-2" /> Sign Out
                     </Button>
+
+                    <Button
+                        variant="outline"
+                        className="w-full shadow-sm mt-2"
+                        onClick={() => {
+                            if ('Notification' in window) {
+                                Notification.requestPermission().then(perm => {
+                                    if (perm === 'granted') alert("Notifications enabled!");
+                                    else alert("Notifications denied. Please enable them in browser settings.");
+                                });
+                            } else {
+                                alert("This browser does not support notifications.");
+                            }
+                        }}
+                    >
+                        <Shield className="w-4 h-4 mr-2" /> Enable Notifications
+                    </Button>
                 </div>
 
                 {/* Reading History Column */}

@@ -20,8 +20,22 @@ const RequestOpen = () => {
 
     const checkStatus = async () => {
         try {
-            const res = await api.get('/common/status');
-            setIsOpen(res.data.is_open);
+            const [statusRes, rosterRes] = await Promise.all([
+                api.get('/common/status'),
+                api.get('/roster/today').catch(() => ({ data: null }))
+            ]);
+            setIsOpen(statusRes.data.is_open);
+
+            // Check if current user is on duty
+            if (rosterRes.data) {
+                const userId = user.id;
+                const v1 = rosterRes.data.volunteer1?.id;
+                const v2 = rosterRes.data.volunteer2?.id;
+                if (userId === v1 || userId === v2) {
+                    setIsOpen(true); // Hide button by pretending it's open (or just return null)
+                    // Better: set a flag
+                }
+            }
         } catch (e) { console.error(e); }
     };
 
@@ -41,7 +55,7 @@ const RequestOpen = () => {
     if (isOpen || !user) return null;
 
     return (
-        <div className="fixed bottom-20 right-4 z-50">
+        <div className="fixed bottom-24 left-4 z-50">
             <Button
                 onClick={handleRequestOpen}
                 disabled={loading || requested}
@@ -50,7 +64,7 @@ const RequestOpen = () => {
                 {requested ? <Bell className="w-6 h-6 text-white" /> : <BellRing className="w-6 h-6 text-white" />}
             </Button>
             {!requested && (
-                <div className="absolute right-16 top-2 bg-black/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                <div className="absolute left-16 top-2 bg-black/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
                     Request to Open
                 </div>
             )}

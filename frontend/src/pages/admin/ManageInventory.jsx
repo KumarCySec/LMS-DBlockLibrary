@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 
 const ManageInventory = () => {
     const [items, setItems] = useState([]);
+    const [stats, setStats] = useState({});
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState('All'); // All, Book, Laptop, Kit
     const [customCategories, setCustomCategories] = useState([]);
@@ -40,8 +41,14 @@ const ManageInventory = () => {
         try {
             const params = { search };
             if (activeTab !== 'All') params.type = activeTab;
-            const response = await api.get('/inventory/', { params });
-            setItems(response.data);
+
+            const [itemsRes, statsRes] = await Promise.all([
+                api.get('/inventory/', { params }),
+                api.get('/inventory/stats')
+            ]);
+
+            setItems(itemsRes.data);
+            setStats(statsRes.data);
         } catch (error) {
             console.error("Failed to fetch inventory", error);
         }
@@ -337,6 +344,34 @@ const ManageInventory = () => {
                         <Plus className="w-4 h-4 mr-1" /> Add
                     </Button>
                 </div>
+            </div>
+
+            {/* Stats Overview */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="bg-indigo-50 border-indigo-100">
+                    <CardContent className="p-4">
+                        <p className="text-xs font-medium text-indigo-600 uppercase">Total Titles</p>
+                        <p className="text-2xl font-bold text-indigo-900">{stats.total_items || 0}</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-blue-50 border-blue-100">
+                    <CardContent className="p-4">
+                        <p className="text-xs font-medium text-blue-600 uppercase">Total Copies</p>
+                        <p className="text-2xl font-bold text-blue-900">{stats.total_copies || 0}</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-emerald-50 border-emerald-100">
+                    <CardContent className="p-4">
+                        <p className="text-xs font-medium text-emerald-600 uppercase">Available Copies</p>
+                        <p className="text-2xl font-bold text-emerald-900">{stats.available_copies || 0}</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-rose-50 border-rose-100">
+                    <CardContent className="p-4">
+                        <p className="text-xs font-medium text-rose-600 uppercase">Active Loans</p>
+                        <p className="text-2xl font-bold text-rose-900">{stats.active_checkouts || 0}</p>
+                    </CardContent>
+                </Card>
             </div>
 
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">

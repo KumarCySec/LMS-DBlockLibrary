@@ -164,7 +164,7 @@ def request_checkout():
             ['Volunteer', 'Incharge', 'Admin'],
             'checkout_request',
             'New Checkout Request',
-            f"User has requested {item.title}.",
+            f"{user.name} ({user.roll_number}) has requested {item.title}.",
             related_transaction_id=new_tx.id
         )
         return jsonify({"message": "Checkout requested successfully", "transaction_id": tx_id, "status": "REQUESTED"}), 201
@@ -213,13 +213,18 @@ def approve_checkout(tx_id):
         tx.due_date = datetime.utcnow() + timedelta(days=days)
         
         # Notify User
-        send_notification(
-            tx.borrower_id,
-            'checkout_approved',
-            'Checkout Approved',
-            f'Your request for {item.title} has been approved. Due date: {tx.due_date.strftime("%Y-%m-%d")}',
-            related_transaction_id=tx.id
+        related_transaction_id=tx.id
+        
+        
+        # Log Activity
+        from models.misc import ActivityLog
+        activity = ActivityLog(
+            user_id=current_user_id,
+            action_type='CHECKOUT',
+            details=f"Issued {item.title} to {tx.borrower.name} ({tx.borrower.roll_number})",
+            ip_address=request.remote_addr
         )
+        db.session.add(activity)
         
     elif action == 'reject':
         tx.status = 'REJECTED'
@@ -302,7 +307,7 @@ def request_return(tx_id):
         ['Volunteer', 'Incharge', 'Admin'],
         'return_request',
         'Return Request',
-        f"User has requested to return {tx.item.title}.",
+        f"{user.name} ({user.roll_number}) has requested to return {tx.item.title}.",
         related_transaction_id=tx.id
     )
 
@@ -374,13 +379,18 @@ def approve_return(tx_id):
     db.session.commit()
     
     # Notify User
-    send_notification(
-        tx.borrower_id,
-        'item_returned',
-        'Item Returned',
-        f'You have successfully returned {item.title}.',
-        related_transaction_id=tx.id
+    related_transaction_id=tx.id
+    
+    
+    # Log Activity
+    from models.misc import ActivityLog
+    activity = ActivityLog(
+        user_id=current_user_id,
+        action_type='RETURN',
+        details=f"Returned {item.title} from {tx.borrower.name} ({tx.borrower.roll_number})",
+        ip_address=request.remote_addr
     )
+    db.session.add(activity)
     
     # Check Waitlist
     next_in_line = Waitlist.query.filter_by(
@@ -484,7 +494,7 @@ def request_renewal(tx_id):
         ['Volunteer', 'Incharge', 'Admin'],
         'renew_request',
         'Renewal Request',
-        f"User has requested renewal for {tx.item.title}.",
+        f"{user.name} ({user.roll_number}) has requested renewal for {tx.item.title}.",
         related_transaction_id=tx.id
     )
     
@@ -511,13 +521,18 @@ def approve_renewal(tx_id):
         tx.processed_by_id = get_jwt_identity()
         tx.processed_at = datetime.utcnow()
         
-        send_notification(
-            tx.borrower_id,
-            'renewal_approved',
-            'Renewal Approved',
-            f'Your renewal for {tx.item.title} is approved. New due date: {tx.due_date.strftime("%Y-%m-%d")}',
-            related_transaction_id=tx.id
+        related_transaction_id=tx.id
+        
+        
+        # Log Activity
+        from models.misc import ActivityLog
+        activity = ActivityLog(
+            user_id=get_jwt_identity(),
+            action_type='RENEW',
+            details=f"Renewed {tx.item.title} for {tx.borrower.name} ({tx.borrower.roll_number})",
+            ip_address=request.remote_addr
         )
+        db.session.add(activity)
         
     elif action == 'reject':
         tx.status = 'ISSUED' # Revert to ISSUED but don't extend date
@@ -559,7 +574,9 @@ def my_transactions():
                     "due_date": tx.due_date,
                     "return_date": tx.return_date,
                     "fine": tx.fine_accrued,
-                    "rejection_reason": tx.rejection_reason
+                    "fine": tx.fine_accrued,
+                    "rejection_reason": tx.rejection_reason,
+                    "renewal_count": tx.renewal_count or 0
                 })
             except:
                 continue

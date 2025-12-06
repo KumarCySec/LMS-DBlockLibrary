@@ -4,6 +4,7 @@ from models import InventoryItem, Donor, Department, Transaction, Waitlist, Inve
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from utils.decorators import role_required, permission_required
 from datetime import datetime, date
+from sqlalchemy import func
 
 inventory_bp = Blueprint('inventory', __name__)
 
@@ -168,13 +169,18 @@ def update_inventory(item_id):
 def get_inventory_stats():
     try:
         total_items = InventoryItem.query.count()
-        available_items = InventoryItem.query.filter(InventoryItem.quantity_available > 0).count()
+        
+        # Calculate sums
+        total_copies = db.session.query(func.sum(InventoryItem.quantity_total)).scalar() or 0
+        available_copies = db.session.query(func.sum(InventoryItem.quantity_available)).scalar() or 0
+        
         active_checkouts = Transaction.query.filter(Transaction.status.in_(['ISSUED', 'OVERDUE'])).count()
         overdue_items = Transaction.query.filter(Transaction.status == 'OVERDUE').count()
         
         return jsonify({
             "total_items": total_items,
-            "available_items": available_items,
+            "total_copies": int(total_copies),
+            "available_copies": int(available_copies),
             "active_checkouts": active_checkouts,
             "overdue_items": overdue_items
         }), 200

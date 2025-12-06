@@ -51,3 +51,26 @@ class AttendanceLog(db.Model):
     status = db.Column(db.String(20), default='ACTIVE') # ACTIVE, COMPLETED
     
     user = db.relationship('User', backref='attendance_logs')
+
+class Announcement(db.Model):
+    __tablename__ = 'announcements'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    target_type = db.Column(db.String(20)) # all, role, department, batch, user
+    target_value = db.Column(db.String(50)) # e.g. 'Student', 'CSE', '2024', '123'
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    created_by = db.relationship('User', foreign_keys=[created_by_id])
+
+class ActivityLog(db.Model):
+    __tablename__ = 'activity_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    action_type = db.Column(db.String(50)) # INVENTORY_ADD, STATUS_CHANGE, etc.
+    details = db.Column(db.Text) # JSON or text
+    ip_address = db.Column(db.String(50))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='activities')
