@@ -25,13 +25,17 @@ class EmailService:
 
             msg.attach(MIMEText(body, 'html'))
 
-            # Setup server with timeout
-            server = smtplib.SMTP('smtp.gmail.com', 587, timeout=10)
+            # Setup server with aggressive timeout (5s) to prevent Gunicorn worker kill
+            server = smtplib.SMTP('smtp.gmail.com', 587, timeout=5)
             server.starttls()
             server.login(sender_email, sender_password)
             text = msg.as_string()
             server.sendmail(sender_email, to_email, text)
-            server.quit()
+            try:
+                server.quit()
+            except:
+                pass # quitting might fail if connection dropped, ignore
+            
             print(f"Email sent successfully to {to_email}")
             return True
         except Exception as e:

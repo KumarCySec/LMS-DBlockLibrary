@@ -193,7 +193,7 @@ def assign_role(user_id):
         # Use env var or strictly fallback. 
         # Ideally, force env var, but for this context, fallback is user-friendly.
         valid_key = os.environ.get('ADMIN_SECRET_KEY')
-        valid_key = os.environ.get('ADMIN_SECRET_KEY') or 'admin123' # Fallback for dev/demo
+        valid_key = os.environ.get('ADMIN_SECRET_KEY') or 'KumarLibraryVel@2495' # Fallback provided by user
         if not valid_key:
              return jsonify({"error": "Admin Secret Key not configured on server"}), 500 
         if secret_key != valid_key:
