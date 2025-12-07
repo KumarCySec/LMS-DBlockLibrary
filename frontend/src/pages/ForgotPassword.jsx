@@ -17,14 +17,28 @@ const ForgotPassword = () => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [message, setMessage] = useState(null); // { type: 'success' | 'error', text: '' }
+    const [cooldown, setCooldown] = useState(0);
+
+    React.useEffect(() => {
+        let timer;
+        if (cooldown > 0) {
+            timer = setInterval(() => {
+                setCooldown((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(timer);
+    }, [cooldown]);
 
     const handleSendOtp = async (e) => {
         if (e) e.preventDefault();
+        if (cooldown > 0) return;
+
         setLoading(true);
         setMessage(null);
         try {
             await api.post('/auth/forgot-password', { email });
             setMessage({ type: 'success', text: 'OTP sent to your email address.' });
+            setCooldown(30); // Start 30s countdown
             setStep(2);
         } catch (error) {
             setMessage({ type: 'error', text: error.response?.data?.error || 'Failed to send OTP.' });
@@ -119,10 +133,11 @@ const ForgotPassword = () => {
                                 <Button
                                     type="button"
                                     onClick={handleSendOtp}
-                                    className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200"
+                                    disabled={loading || cooldown > 0}
+                                    className={`w-full h-11 text-white shadow-lg ${cooldown > 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'}`}
                                     isLoading={loading}
                                 >
-                                    Send OTP <ArrowRight className="ml-2 h-4 w-4" />
+                                    {cooldown > 0 ? `Wait ${cooldown}s` : <>Send OTP <ArrowRight className="ml-2 h-4 w-4" /></>}
                                 </Button>
                             </form>
                         ) : (
