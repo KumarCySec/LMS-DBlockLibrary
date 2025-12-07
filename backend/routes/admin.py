@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify
 import os
+from datetime import datetime
 from extensions import db
-from models import AppSetting, User, Transaction, InventoryItem, VolunteerSchedule, Department, Role, Permission, Donor
+from models import AppSetting, User, Transaction, InventoryItem, InventoryCopy, VolunteerSchedule, Department, Role, Permission, Donor, Waitlist, Notification, AttendanceLog, ActivityLog
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
 from utils.decorators import role_required, permission_required
@@ -109,70 +110,53 @@ def update_roster():
 
 @admin_bp.route('/roles', methods=['GET'])
 @jwt_required()
-@permission_required('manage_roles_permissions')
-def get_roles():
-    try:
-        roles = Role.query.all()
-        result = []
-        for r in roles:
-            perms = []
-            if hasattr(r, 'permissions'):
-                try:
-                    perms = [p.name for p in r.permissions]
-                except:
-                    perms = []
-            
-            result.append({
-                "id": r.id,
-                "name": r.name,
-                "permissions": perms
-            })
-        return jsonify(result), 200
-    except Exception as e:
-        return jsonify({"error": "Failed to fetch roles", "details": str(e)}), 500
+@permission_required('manage_roles')
+def list_roles():
+    roles = Role.query.all()
+    # Serialize including permissions
+    result = []
+    for r in roles:
+        result.append({
+            "id": r.id,
+            "name": r.name,
+            "permissions": [p.name for p in r.permissions]
+        })
+    return jsonify(result), 200
 
 @admin_bp.route('/permissions', methods=['GET'])
 @jwt_required()
-@permission_required('manage_roles_permissions')
-def get_permissions():
-    try:
-        perms = Permission.query.all()
-        return jsonify([{
-            "id": p.id, 
-            "name": p.name, 
-            "description": getattr(p, "description", "")
-        } for p in perms]), 200
-    except Exception as e:
-        return jsonify({"error": "Failed to fetch permissions", "details": str(e)}), 500
+@permission_required('manage_roles')
+def list_permissions():
+    perms = Permission.query.all()
+    return jsonify([{"id": p.id, "name": p.name} for p in perms]), 200
 
-@admin_bp.route('/roles/<int:role_id>/permissions', methods=['POST'])
+@admin_bp.route('/roles/permissions', methods=['POST'])
 @jwt_required()
-@permission_required('manage_roles_permissions')
-def update_role_permissions(role_id):
-    role = Role.query.get_or_404(role_id)
-    
-    if role.name == 'Admin':
-        return jsonify({"error": "Admin role cannot be modified."}), 403
-        
+@permission_required('manage_roles')
+def update_role_permissions():
     data = request.get_json()
+    role_name = data.get('role')
     perm_names = data.get('permissions', [])
     
-    # Clear existing permissions
+    role = Role.query.filter_by(name=role_name).first()
+    if not role:
+        return jsonify({"error": "Role not found"}), 404
+        
+    # Clear existing
     role.permissions = []
     
-    for name in perm_names:
-        perm = Permission.query.filter_by(name=name).first()
+    # Add new
+    for pname in perm_names:
+        perm = Permission.query.filter_by(name=pname).first()
         if perm:
             role.permissions.append(perm)
             
     db.session.commit()
-    return jsonify({"message": "Role permissions updated"}), 200
-
-# --- User Role Management ---
+    return jsonify({"message": f"Permissions updated for {role_name}"}), 200
 
 @admin_bp.route('/users/<int:user_id>/role', methods=['POST'])
 @jwt_required()
-def change_user_role(user_id):
+def assign_role(user_id):
     current_user_id = get_jwt_identity()
     current_user = User.query.get(current_user_id)
     target_user = User.query.get_or_404(user_id)
@@ -212,16 +196,12 @@ def change_user_role(user_id):
         if secret_key != valid_key:
              return jsonify({"error": "Invalid Admin Secret Key"}), 403
 
-    # Prevent removing own Admin role if it's the last admin (optional safety)
-    # But mainly prevent removing own Admin role at all if you are the target
-    if str(target_user.id) == str(current_user_id) and target_user.role == 'Admin' and role_name != 'Admin':
-         return jsonify({"error": "Cannot remove your own Admin role"}), 403
-
-    # Replace roles
-    target_user.roles = [role]
-    db.session.commit()
+    # Perform Assignment
+    if role not in target_user.roles:
+        target_user.roles.append(role)
+        db.session.commit()
         
-    return jsonify({"message": f"User role updated to {role_name}"}), 200
+    return jsonify({"message": f"Role {role_name} assigned to {target_user.name}"}), 200
 
 # --- Departments ---
 
@@ -340,3 +320,199 @@ def delete_donor(donor_id):
     except:
         db.session.rollback()
         return jsonify({"error": "Cannot delete donor with associated items"}), 400
+
+# ==========================================
+# SYSTEM RESET & CLEANUP (DANGER ZONE)
+# ==========================================
+
+@admin_bp.route('/system/reset-transactions', methods=['POST'])
+@jwt_required()
+def reset_transactions():
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+    
+    # 1. Permission Check
+    # get_all_permissions returns a list of strings
+    if 'manage_system_reset' not in user.get_all_permissions():
+         return jsonify({"error": "Permission denied"}), 403
+
+    data = request.json
+    secret_key = data.get('secret_key')
+    reset_type = data.get('type') # 'all', 'date', or 'history'
+
+    # 2. Secret Key Check
+    valid_key = os.environ.get('ADMIN_SECRET_KEY', 'admin123')
+    if secret_key != valid_key:
+        return jsonify({"error": "Invalid Admin Secret Key"}), 403
+
+    try:
+        if reset_type == 'all':
+            # Force Return ALL borrowed items
+            # Statuses that imply possession: ISSUED, OVERDUE, RETURN_REQUESTED, RENEW_REQUESTED
+            active_statuses = ['ISSUED', 'OVERDUE', 'RETURN_REQUESTED', 'RENEW_REQUESTED']
+            active_txs = Transaction.query.filter(Transaction.status.in_(active_statuses)).all()
+            count = 0
+            for tx in active_txs:
+                tx.status = 'RETURNED'
+                tx.return_date = datetime.utcnow()
+                item = InventoryItem.query.get(tx.inventory_item_id)
+                if item:
+                    item.quantity_available += 1
+                
+                if tx.copy_id:
+                    copy = InventoryCopy.query.get(tx.copy_id)
+                    if copy:
+                        copy.status = 'AVAILABLE'
+                        copy.current_holder_id = None
+
+                count += 1
+            
+            db.session.commit()
+            return jsonify({"message": f"Successfully forced return for {count} transactions. Inventory updated."}), 200
+
+        elif reset_type == 'date':
+             # Clear transactions for a particular date (Delete history?)
+            target_date_str = data.get('date')
+            if not target_date_str:
+                return jsonify({"error": "Date is required"}), 400
+            
+            target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
+            
+            # Delete transactions created on this date
+            txs_to_delete = Transaction.query.filter(
+                db.func.date(Transaction.issue_date) == target_date
+            ).all()
+
+            count = 0
+            for tx in txs_to_delete:
+                # If valid active transaction, return inventory
+                active_statuses = ['ISSUED', 'OVERDUE', 'RETURN_REQUESTED', 'RENEW_REQUESTED']
+                if tx.status in active_statuses:
+                    item = InventoryItem.query.get(tx.inventory_item_id)
+                    if item:
+                         item.quantity_available += 1
+                    
+                    if tx.copy_id:
+                        copy = InventoryCopy.query.get(tx.copy_id)
+                        if copy:
+                            copy.status = 'AVAILABLE'
+                            copy.current_holder_id = None
+                
+                db.session.delete(tx)
+                count += 1
+            
+            db.session.commit()
+            return jsonify({"message": f"Deleted {count} transactions for {target_date_str}"}), 200
+
+        elif reset_type == 'history':
+            # Clear ALL transaction history (Delete All Rows)
+            # This is a full wipe.
+            all_txs = Transaction.query.all()
+            count = len(all_txs)
+            
+            # Safety first: Restore inventory for any active ones before deleting?
+            # User probably wants a clean slate. 
+            # If we delete history, we assume inventory is either also being reset or we should restore it.
+            # Let's restore inventory for actives to be safe, then delete.
+            
+            for tx in all_txs:
+                active_statuses = ['ISSUED', 'OVERDUE', 'RETURN_REQUESTED', 'RENEW_REQUESTED']
+                if tx.status in active_statuses:
+                    item = InventoryItem.query.get(tx.inventory_item_id)
+                    if item:
+                         item.quantity_available += 1
+                    
+                    if tx.copy_id:
+                        copy = InventoryCopy.query.get(tx.copy_id)
+                        if copy:
+                            copy.status = 'AVAILABLE'
+                            copy.current_holder_id = None
+                
+                db.session.delete(tx)
+
+            db.session.commit()
+            return jsonify({"message": f"Permanently deleted all {count} transaction records."}), 200
+        
+        return jsonify({"error": "Invalid reset type"}), 400
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@admin_bp.route('/system/delete-users', methods=['POST'])
+@jwt_required()
+def delete_users():
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+
+    # 1. Permission Check
+    if 'manage_system_reset' not in user.get_all_permissions():
+         return jsonify({"error": "Permission denied"}), 403
+
+    data = request.json
+    secret_key = data.get('secret_key')
+
+    # 2. Secret Key Check
+    valid_key = os.environ.get('ADMIN_SECRET_KEY', 'admin123')
+    if secret_key != valid_key:
+        return jsonify({"error": "Invalid Admin Secret Key"}), 403
+
+
+    try:
+        # Delete all users EXCEPT Admin
+        # Fetch all users first, then filter in Python to ensure 'role' property is respected
+        # (Since User.role is a property, not a column, SQL filter failed)
+        all_users = User.query.all()
+        users_to_delete = [u for u in all_users if u.role != 'Admin']
+        count = len(users_to_delete)
+        
+        for u in users_to_delete:
+            # 1. Restore Inventory for Active Transactions
+            active_txs = Transaction.query.filter_by(borrower_id=u.id, status='ISSUED').all()
+            for tx in active_txs:
+                item = InventoryItem.query.get(tx.inventory_item_id)
+                if item:
+                    item.quantity_available += 1
+
+                if tx.copy_id:
+                    copy = InventoryCopy.query.get(tx.copy_id)
+                    if copy:
+                        copy.status = 'AVAILABLE'
+                        copy.current_holder_id = None
+            
+            # 2. Delete All Transactions (History & Active)
+            Transaction.query.filter((Transaction.borrower_id == u.id) | 
+                                     (Transaction.requested_by_id == u.id) |
+                                     (Transaction.approved_by_id == u.id) |
+                                     (Transaction.rejected_by_id == u.id) |
+                                     (Transaction.processed_by_id == u.id)).delete()
+
+            # 3. Delete Waitlist
+            Waitlist.query.filter_by(requester_id=u.id).delete()
+
+            # 4. Delete Notifications
+            Notification.query.filter_by(user_id=u.id).delete()
+
+            # 5. Delete Attendance Logs
+            AttendanceLog.query.filter_by(user_id=u.id).delete()
+
+            # 6. Delete Activity Logs
+            ActivityLog.query.filter_by(user_id=u.id).delete()
+
+            # 7. Unlink from VolunteerSchedule (Set to None instead of delete schedule?)
+            # If we delete schedule, we lose record of 'someone' being there. 
+            # Better to set to None.
+            schedules = VolunteerSchedule.query.filter((VolunteerSchedule.volunteer_1_id == u.id) | (VolunteerSchedule.volunteer_2_id == u.id)).all()
+            for s in schedules:
+                if s.volunteer_1_id == u.id: s.volunteer_1_id = None
+                if s.volunteer_2_id == u.id: s.volunteer_2_id = None
+            
+            # 8. Delete User
+            db.session.delete(u)
+            
+        db.session.commit()
+        return jsonify({"message": f"Deleted {count} non-admin users. Inventory restored. All related data wiped."}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500

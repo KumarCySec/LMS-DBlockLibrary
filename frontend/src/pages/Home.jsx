@@ -6,7 +6,7 @@ import { Button } from '../components/ui/Button';
 import {
     CheckCircle, UserPlus, Bell, Clock, Activity, Loader2, Calendar,
     Users, Phone, Mail, Building, Zap, Search, Package, BarChart2,
-    History, BookOpen, Settings, Upload, FileText, UserCog, Heart, Shield, X, Banknote
+    History, BookOpen, Settings, Upload, FileText, UserCog, Heart, Shield, X, Banknote, AlertTriangle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getPrimaryRole, hasAnyPermission } from '../utils/permissions';
@@ -244,6 +244,14 @@ const Home = () => {
             link: '/admin/activity',
             color: 'bg-amber-100 text-amber-600',
             perm: ['view_analytics']
+        },
+        {
+            id: 'system_reset',
+            label: 'Sys Reset',
+            icon: AlertTriangle,
+            link: '/admin/system-reset',
+            color: 'bg-red-100 text-red-600',
+            perm: ['manage_system_reset']
         },
         {
             id: 'settings',

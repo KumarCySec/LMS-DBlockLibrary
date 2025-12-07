@@ -24,6 +24,7 @@ import ManageTransactions from './pages/admin/ManageTransactions';
 import PendingApprovals from './pages/admin/PendingApprovals';
 import Settings from './pages/admin/Settings';
 import ManageRoles from './pages/admin/ManageRoles';
+import SystemReset from './pages/admin/SystemReset';
 import ManageDepartments from './pages/admin/ManageDepartments';
 import ManageRoster from './pages/admin/ManageRoster';
 import ManageStatus from './pages/admin/ManageStatus';
@@ -43,8 +44,9 @@ import Announcements from './pages/admin/Announcements';
 import ActivityLog from './pages/admin/ActivityLog';
 import CurrentOutstanding from './pages/admin/CurrentOutstanding';
 import Payments from './pages/Payments';
+import ScrollToTop from './components/ScrollToTop';
 
-const ProtectedRoute = ({ children, requiredRole, requiredPermission, requiredAnyPermission }) => {
+const ProtectedRoute = ({ children, requiredRole, requiredPermission, requiredAnyPermission, adminOnly }) => {
     const { user, loading, error, hasRole, hasPermission } = useAuth();
 
     if (loading) {
@@ -72,6 +74,11 @@ const ProtectedRoute = ({ children, requiredRole, requiredPermission, requiredAn
         return <Navigate to="/login" />;
     }
 
+    // New generic admin check
+    if (adminOnly && !hasRole('Admin')) {
+        return <Navigate to="/" />;
+    }
+
     if (requiredRole && !hasRole(requiredRole) && !hasRole('Admin')) {
         return <Navigate to="/" />;
     }
@@ -86,8 +93,6 @@ const ProtectedRoute = ({ children, requiredRole, requiredPermission, requiredAn
 
     return children;
 };
-
-import ScrollToTop from './components/ScrollToTop';
 
 function App() {
     return (
@@ -131,6 +136,10 @@ function App() {
                     {/* New Admin Features */}
                     <Route path="admin/settings" element={<ProtectedRoute requiredPermission="manage_settings"><Settings /></ProtectedRoute>} />
                     <Route path="admin/roles" element={<ProtectedRoute requiredPermission="manage_roles_permissions"><ManageRoles /></ProtectedRoute>} />
+
+                    {/* System Reset - Danger Zone */}
+                    <Route path="admin/system-reset" element={<ProtectedRoute requiredPermission="manage_system_reset"><SystemReset /></ProtectedRoute>} />
+
                     <Route path="admin/departments" element={<ProtectedRoute requiredPermission="manage_departments"><ManageDepartments /></ProtectedRoute>} />
                     <Route path="admin/roster" element={<ProtectedRoute requiredPermission="manage_roster"><ManageRoster /></ProtectedRoute>} />
                     <Route path="admin/status" element={<ProtectedRoute requiredPermission="update_library_status"><ManageStatus /></ProtectedRoute>} />
@@ -138,8 +147,6 @@ function App() {
                     <Route path="admin/donors" element={<ProtectedRoute requiredPermission="manage_donors"><ManageDonors /></ProtectedRoute>} />
                     <Route path="admin/donors/add" element={<ProtectedRoute requiredPermission="manage_donors"><AddDonor /></ProtectedRoute>} />
                     <Route path="admin/donors/:donorId" element={<ProtectedRoute requiredPermission="manage_donors"><DonorDetail /></ProtectedRoute>} />
-
-
 
                     <Route path="admin/import" element={<ProtectedRoute requiredPermission="import_data"><ImportData /></ProtectedRoute>} />
 

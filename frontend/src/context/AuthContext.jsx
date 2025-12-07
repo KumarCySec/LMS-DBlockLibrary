@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
             setUser(updatedUser);
         } catch (error) {
             console.error("Failed to refresh profile", error);
-            if (error.response?.status === 401) {
+            if (error.response?.status === 401 || error.response?.status === 404) {
                 logout();
             } else {
                 setError("Could not load profile. Please check your connection.");

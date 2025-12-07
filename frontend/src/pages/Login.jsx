@@ -67,6 +67,8 @@ const Login = () => {
                                 <Input
                                     id="email"
                                     type="email"
+                                    name="email"
+                                    autoComplete="username"
                                     placeholder="student@gce.edu"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
@@ -84,6 +86,8 @@ const Login = () => {
                                 <div className="relative">
                                     <Input
                                         id="password"
+                                        name="password"
+                                        autoComplete="current-password"
                                         type={showPassword ? "text" : "password"}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
