@@ -6,6 +6,7 @@ import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../components/ui/Card';
 import StrengthMeter from '../components/ui/StrengthMeter';
 import gceLogo from '../assets/gce_logo.png';
+import { Eye, EyeOff } from 'lucide-react';
 
 import api from '../api/axios';
 
@@ -14,6 +15,7 @@ const Register = () => {
     const { register } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -152,7 +154,24 @@ const Register = () => {
 
                             <div className="space-y-1">
                                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1" htmlFor="password">Password</label>
-                                <Input id="password" type="password" value={formData.password} onChange={handleChange} required className="h-9 bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 rounded-lg text-sm" placeholder="••••••••" />
+                                <div className="relative">
+                                    <Input
+                                        id="password"
+                                        type={showPassword ? "text" : "password"}
+                                        value={formData.password}
+                                        onChange={handleChange}
+                                        required
+                                        className="h-9 bg-slate-50 border-slate-200 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 rounded-lg text-sm pr-10"
+                                        placeholder="••••••••"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                    >
+                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </button>
+                                </div>
                                 {formData.password && <StrengthMeter password={formData.password} />}
                             </div>
 

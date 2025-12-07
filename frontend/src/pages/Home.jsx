@@ -11,7 +11,6 @@ import {
 import { cn } from '../lib/utils';
 import { getPrimaryRole, hasAnyPermission } from '../utils/permissions';
 import FlyingAnnouncement from '../components/FlyingAnnouncement';
-import MaxRenewalCard from '../components/MaxRenewalCard';
 import QuickCheckout from '../components/QuickCheckout';
 import { useNavigate } from 'react-router-dom';
 
@@ -175,6 +174,14 @@ const Home = () => {
             perm: ['approve_users', 'manage_settings']
         },
         {
+            id: 'departments',
+            label: 'Depts',
+            icon: Building,
+            link: '/admin/departments',
+            color: 'bg-blue-100 text-blue-600',
+            perm: ['manage_departments']
+        },
+        {
             id: 'inventory',
             label: 'Inventory',
             icon: Package,
@@ -264,7 +271,6 @@ const Home = () => {
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
             <FlyingAnnouncement />
-            <MaxRenewalCard transactions={stats.my_transactions || []} />
 
             <div className="max-w-xl mx-auto md:max-w-4xl px-4 pt-6 space-y-5">
 
@@ -474,7 +480,7 @@ const Home = () => {
                                             </div>
                                             <div>
                                                 <p className="font-bold text-gray-900 text-sm">{user.name}</p>
-                                                <p className="text-[10px] text-gray-500 font-medium">Checked in at {new Date(user.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                                <p className="text-[10px] text-gray-500 font-medium">Checked in at {new Date(user.check_in + (user.check_in.endsWith('Z') ? '' : 'Z')).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">

@@ -30,18 +30,18 @@ const FlyingAnnouncement = () => {
 
     useEffect(() => {
         if (visible) {
+            if (announcement) {
+                localStorage.setItem('lastSeenAnnouncement', announcement.id);
+            }
             const timer = setTimeout(() => {
                 setVisible(false);
             }, 10000); // Auto dismiss after 10 seconds
             return () => clearTimeout(timer);
         }
-    }, [visible]);
+    }, [visible, announcement]);
 
     const handleDismiss = () => {
         setVisible(false);
-        if (announcement) {
-            localStorage.setItem('lastSeenAnnouncement', announcement.id);
-        }
     };
 
     if (!visible || !announcement) return null;

@@ -1,9 +1,9 @@
 from flask import Blueprint, request, jsonify
 from extensions import db
-from models import Transaction, User
+from models import Transaction, User, AppSetting
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from utils.decorators import role_required, permission_required
-from datetime import datetime
+from datetime import datetime, timedelta
 
 payments_bp = Blueprint('payments', __name__)
 
@@ -11,27 +11,45 @@ payments_bp = Blueprint('payments', __name__)
 @jwt_required()
 def get_my_dues():
     current_user_id = get_jwt_identity()
-    # Fetch transactions with outstanding rent or fine
-    # Outstanding means: (rent > 0 OR fine > 0) AND status != 'PAID'
+    # Fetch all issued/overdue transactions to check for dynamic fines + pending payments
     txs = Transaction.query.filter(
         Transaction.borrower_id == current_user_id,
-        (Transaction.rent_amount > 0) | (Transaction.fine_accrued > 0),
-        Transaction.payment_status != 'PAID'
-    ).order_by(Transaction.return_date.desc()).all()
+        Transaction.status.in_(['ISSUED', 'OVERDUE', 'RETURN_REQUESTED', 'RETURNED'])
+    ).all()
     
     result = []
+    fine_per_day_setting = AppSetting.query.get('fine_per_day')
+    rate = float(fine_per_day_setting.value) if fine_per_day_setting else 1.0
+
     for tx in txs:
-        result.append({
-            "id": tx.id,
-            "transaction_id": tx.transaction_id,
-            "item_title": tx.item.title if tx.item else "Unknown",
-            "return_date": tx.return_date.isoformat() if tx.return_date else None,
-            "rent_amount": tx.rent_amount,
-            "fine_amount": tx.fine_accrued,
-            "total_due": (tx.rent_amount or 0) + (tx.fine_accrued or 0),
-            "payment_status": tx.payment_status,
-            "type": "Rent" if tx.rent_amount > 0 else "Fine"
-        })
+        current_fine = 0
+        current_rent = 0
+        
+        # Calculate Fine
+        if tx.due_date and datetime.utcnow() > tx.due_date and tx.status != 'RETURNED':
+             overdue_days = (datetime.utcnow() - tx.due_date).days
+             current_fine = max(0, overdue_days * rate)
+        elif tx.fine_accrued:
+             current_fine = tx.fine_accrued
+
+        # Check Unpaid
+        total_due = (tx.rent_amount or 0) + current_fine
+        paid = (tx.fine_paid_amount or 0) # Discount paid fines
+        outstanding = total_due - paid
+        
+        if outstanding > 0 and tx.payment_status != 'PAID':
+            result.append({
+                "id": tx.id,
+                "transaction_id": tx.transaction_id,
+                "item_title": tx.item.title if tx.item else "Unknown",
+                "return_date": tx.return_date.isoformat() if tx.return_date else None,
+                "rent_amount": tx.rent_amount,
+                "fine_amount": current_fine,
+                "paid_amount": paid,
+                "total_due": outstanding,
+                "payment_status": tx.payment_status,
+                "type": "Rent" if tx.rent_amount > 0 else "Fine"
+            })
         
     return jsonify(result), 200
 
@@ -110,8 +128,20 @@ def approve_payment():
         if tx:
             tx.payment_status = 'PAID'
             tx.payment_method = method
-            # Log who collected partial info? 
-            # Could add collected_by_id to model but simple update is fine for now.
+            
+            # Update fine_paid_amount to snapshot current fine
+            if tx.due_date and datetime.utcnow() > tx.due_date and tx.status != 'RETURNED':
+                fine_per_day_setting = AppSetting.query.get('fine_per_day')
+                rate = float(fine_per_day_setting.value) if fine_per_day_setting else 1.0
+                overdue_days = (datetime.utcnow() - tx.due_date).days
+                current_fine = max(0, overdue_days * rate)
+                tx.fine_paid_amount = current_fine
+            
+            # If Rent?
+            # Rent is usually calculated at Return. 
+            # If they pay rent "in advance" or "interim", we assume rent_amount is set?
+            # Currently rent is set at Return. 
+            # So Payment for Rent implies Return happened.
             
     db.session.commit()
     return jsonify({"message": "Payments approved successfully"}), 200

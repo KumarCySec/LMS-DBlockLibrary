@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, ArrowRight, Lock, KeyRound, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Mail, ArrowRight, Lock, KeyRound, Loader2, CheckCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent } from '../components/ui/Card';
@@ -15,10 +15,11 @@ const ForgotPassword = () => {
     const [otp, setOtp] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [message, setMessage] = useState(null); // { type: 'success' | 'error', text: '' }
 
     const handleSendOtp = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
         setLoading(true);
         setMessage(null);
         try {
@@ -39,7 +40,7 @@ const ForgotPassword = () => {
     };
 
     const handleResetPassword = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
         if (password !== confirmPassword) {
             setMessage({ type: 'error', text: 'Passwords do not match' });
             return;
@@ -115,7 +116,12 @@ const ForgotPassword = () => {
                                     </div>
                                 </div>
 
-                                <Button type="submit" className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200" isLoading={loading}>
+                                <Button
+                                    type="button"
+                                    onClick={handleSendOtp}
+                                    className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200"
+                                    isLoading={loading}
+                                >
                                     Send OTP <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
                             </form>
@@ -149,13 +155,20 @@ const ForgotPassword = () => {
                                             </div>
                                             <Input
                                                 id="password"
-                                                type="password"
+                                                type={showPassword ? "text" : "password"}
                                                 required
-                                                className="pl-10"
+                                                className="pl-10 pr-10"
                                                 placeholder="••••••••"
                                                 value={password}
                                                 onChange={(e) => setPassword(e.target.value)}
                                             />
+                                            <button
+                                                type="button"
+                                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                            >
+                                                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                            </button>
                                         </div>
                                         {password && <StrengthMeter password={password} />}
                                     </div>
@@ -195,7 +208,12 @@ const ForgotPassword = () => {
                                     </div>
                                 </div>
 
-                                <Button type="submit" className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200" isLoading={loading}>
+                                <Button
+                                    type="button"
+                                    onClick={handleResetPassword}
+                                    className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200"
+                                    isLoading={loading}
+                                >
                                     Reset Password
                                 </Button>
 

@@ -24,7 +24,8 @@ const ManageUsers = () => {
     // Role Management State
     const [showRoleModal, setShowRoleModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
-    const [availableRoles, setAvailableRoles] = useState(['Student', 'Volunteer', 'Incharge']); // Admin usually separate
+    const [secretKey, setSecretKey] = useState('');
+    const [newRole, setNewRole] = useState('');
 
     // Debounce search
     const [debouncedSearch, setDebouncedSearch] = useState(search);
@@ -84,19 +85,27 @@ const ManageUsers = () => {
         e.preventDefault();
         e.stopPropagation();
         setSelectedUser(user);
+        setNewRole(user.role);
+        setSecretKey('');
         setShowRoleModal(true);
     };
 
-    const handleRoleChange = async (newRole) => {
+    const submitRoleChange = async () => {
         if (!selectedUser) return;
 
-        // Optimistic update or wait? Let's wait.
         try {
-            await api.post(`/admin/users/${selectedUser.id}/role`, { role: newRole });
+            const payload = { role: newRole };
+            if (newRole === 'Admin') {
+                if (!secretKey) return alert("Secret Key is required for Admin assignment.");
+                payload.secret_key = secretKey;
+            }
+
+            await api.post(`/admin/users/${selectedUser.id}/role`, payload);
             fetchUsers();
             setShowRoleModal(false);
-            // Show toast or alert?
+            alert("Role updated successfully!");
         } catch (error) {
+            console.error("Update role failed", error);
             alert(error.response?.data?.error || "Failed to update role");
         }
     };
@@ -294,6 +303,11 @@ const ManageUsers = () => {
                 isOpen={showRoleModal}
                 onClose={() => setShowRoleModal(false)}
                 title={`Change Role: ${selectedUser?.name}`}
+                footer={
+                    <Button className="w-full bg-indigo-600 hover:bg-indigo-700" onClick={submitRoleChange}>
+                        Save Role Change
+                    </Button>
+                }
             >
                 <div className="space-y-4">
                     <p className="text-sm text-gray-600">Select a new role for this user.</p>
@@ -302,33 +316,52 @@ const ManageUsers = () => {
                         {['Student', 'Volunteer', 'Incharge', 'Admin'].map(role => (
                             <label key={role} className={cn(
                                 "flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all",
-                                selectedUser?.role === role
+                                newRole === role
                                     ? "border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600"
                                     : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                             )}>
                                 <div className="flex items-center gap-3">
                                     <div className={cn(
                                         "w-4 h-4 rounded-full border flex items-center justify-center",
-                                        selectedUser?.role === role ? "border-indigo-600" : "border-gray-400"
+                                        newRole === role ? "border-indigo-600" : "border-gray-400"
                                     )}>
-                                        {selectedUser?.role === role && <div className="w-2 h-2 rounded-full bg-indigo-600" />}
+                                        {newRole === role && <div className="w-2 h-2 rounded-full bg-indigo-600" />}
                                     </div>
-                                    <span className={cn("text-sm font-medium", selectedUser?.role === role ? "text-indigo-900" : "text-gray-700")}>
+                                    <span className={cn("text-sm font-medium", newRole === role ? "text-indigo-900" : "text-gray-700")}>
                                         {role}
                                     </span>
                                 </div>
-                                {selectedUser?.role === role && <Check className="w-4 h-4 text-indigo-600" />}
+                                {newRole === role && <Check className="w-4 h-4 text-indigo-600" />}
                                 <input
                                     type="radio"
                                     name="role"
                                     value={role}
-                                    checked={selectedUser?.role === role}
-                                    onChange={() => handleRoleChange(role)}
+                                    checked={newRole === role}
+                                    onChange={() => setNewRole(role)}
                                     className="hidden"
                                 />
                             </label>
                         ))}
                     </div>
+
+                    {/* Admin Secret Key Input */}
+                    {newRole === 'Admin' && (
+                        <div className="mt-4 pt-4 border-t border-gray-100 animate-in fade-in slide-in-from-top-2">
+                            <p className="text-xs font-bold text-rose-600 uppercase mb-2 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                                Admin Access Required
+                            </p>
+                            <Input
+                                type="password"
+                                placeholder="Enter Admin Secret Code"
+                                value={secretKey}
+                                onChange={(e) => setSecretKey(e.target.value)}
+                                className="border-rose-200 focus:ring-rose-500"
+                                autoComplete="new-password"
+                            />
+                            <p className="text-xs text-gray-400 mt-1">This action requires a master secret key.</p>
+                        </div>
+                    )}
                 </div>
             </BottomSheet>
 

@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 
 import BottomSheet from '../components/ui/BottomSheet';
 import { Input } from '../components/ui/Input';
+import MaxRenewalCard from '../components/MaxRenewalCard';
 
 const MyBorrowings = () => {
     const [transactions, setTransactions] = useState([]);
@@ -97,6 +98,7 @@ const MyBorrowings = () => {
     return (
         <div className="p-4 space-y-4 pb-24">
             <h1 className="text-2xl font-bold text-gray-900">My Borrowings</h1>
+            <MaxRenewalCard transactions={transactions} />
 
             {transactions.length === 0 ? (
                 <div className="text-center py-12 bg-gray-50 rounded-lg">
@@ -161,6 +163,28 @@ const MyBorrowings = () => {
                                             <strong>Last Rejection:</strong> {tx.rejection_reason}
                                         </div>
                                     )}
+
+                                    {/* Outstanding Dues Alert */}
+                                    {((tx.current_fine || 0) + (tx.current_rent || 0) - (tx.fine_paid_amount || 0)) > 0 && (
+                                        <div className="mt-3 bg-rose-50 border border-rose-200 rounded-lg p-3 flex justify-between items-center animate-in fade-in slide-in-from-top-1">
+                                            <div>
+                                                <p className="text-xs font-bold text-rose-700 uppercase tracking-wide">Outstanding Dues</p>
+                                                <p className="text-lg font-bold text-rose-900">
+                                                    ₹{((tx.current_fine || 0) + (tx.current_rent || 0) - (tx.fine_paid_amount || 0)).toFixed(2)}
+                                                </p>
+                                                {tx.payment_status === 'REQUESTED' && (
+                                                    <p className="text-[10px] text-amber-600 font-bold mt-1">Payment Verification Pending</p>
+                                                )}
+                                            </div>
+                                            {tx.payment_status !== 'REQUESTED' && (
+                                                <Link to="/payments">
+                                                    <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white h-8 border-0 shadow-sm">
+                                                        Pay Now
+                                                    </Button>
+                                                </Link>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
                                     <div className="text-xs text-gray-400">
@@ -184,13 +208,17 @@ const MyBorrowings = () => {
                                                     variant="outline"
                                                     className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 h-8"
                                                     onClick={() => handleRenew(tx.id)}
+                                                    disabled={((tx.current_fine || 0) + (tx.current_rent || 0) - (tx.fine_paid_amount || 0)) > 0}
+                                                    title={((tx.current_fine || 0) + (tx.current_rent || 0) - (tx.fine_paid_amount || 0)) > 0 ? "Please pay outstanding dues first" : "Renew Item"}
                                                 >
                                                     Renew
                                                 </Button>
                                                 <Button
                                                     size="sm"
-                                                    className="bg-indigo-600 hover:bg-indigo-700 text-white h-8"
+                                                    className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 disabled:bg-gray-300"
                                                     onClick={() => openReturnModal(tx.id)}
+                                                    disabled={((tx.current_fine || 0) + (tx.current_rent || 0) - (tx.fine_paid_amount || 0)) > 0}
+                                                    title={((tx.current_fine || 0) + (tx.current_rent || 0) - (tx.fine_paid_amount || 0)) > 0 ? "Please pay outstanding dues first" : "Return Item"}
                                                 >
                                                     Return
                                                 </Button>

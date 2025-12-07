@@ -10,6 +10,7 @@ const Notifications = () => {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('new'); // 'new' | 'past'
+    const [expanded, setExpanded] = useState({}); // id -> boolean
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -126,7 +127,9 @@ const Notifications = () => {
                         )}>
                             <CardContent className="p-4 flex gap-3 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => {
                                 // Determine path based on type
-                                if (['checkout_request', 'renew_request', 'return_request'].includes(notif.type)) {
+                                if (notif.type === 'announcement') {
+                                    setExpanded(prev => ({ ...prev, [notif.id]: !prev[notif.id] }));
+                                } else if (['checkout_request', 'renew_request', 'return_request'].includes(notif.type)) {
                                     // For admins/staff
                                     let status = 'REQUESTED';
                                     if (notif.type === 'renew_request') status = 'RENEW_REQUESTED';
@@ -157,7 +160,14 @@ const Notifications = () => {
                                             {formatDistanceToNow(new Date(notif.date), { addSuffix: true })}
                                         </span>
                                     </div>
-                                    <p className="text-sm text-gray-600 mt-1">{notif.body}</p>
+                                    <p className={cn("text-sm text-gray-600 mt-1", expanded[notif.id] ? "" : "line-clamp-2")}>
+                                        {notif.body}
+                                    </p>
+                                    {notif.type === 'announcement' && (
+                                        <p className="text-xs text-indigo-500 mt-1 font-medium">
+                                            {expanded[notif.id] ? "Show less" : "Click to expand"}
+                                        </p>
+                                    )}
 
                                     <div className="flex gap-3 mt-2">
                                         {!notif.read && (

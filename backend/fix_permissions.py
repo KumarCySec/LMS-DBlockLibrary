@@ -58,7 +58,7 @@ def fix_permissions():
             db.session.add(volunteer_role)
             
         volunteer_perm_names = [
-            'view_inventory', 'approve_checkout', 'approve_return', 'approve_renewal', 
+            'view_inventory', 'approve_checkout', 'approve_return', 'approve_renew', 
             'view_roster', 'manage_inventory' # Maybe manage inventory too? Let's say yes for now or stick to basics.
             # User didn't specify exact Volunteer perms, but Incharge needs to be fixed.
             # Let's give Volunteer basic operational perms.

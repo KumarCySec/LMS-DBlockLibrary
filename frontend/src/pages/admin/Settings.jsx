@@ -53,6 +53,7 @@ const Settings = () => {
         { key: 'laptop_due_days', label: 'Laptop Loan Period (Days)', type: 'number' },
         { key: 'laptop_daily_rent', label: 'Laptop Daily Rent (₹)', type: 'number' },
         { key: 'max_renewals', label: 'Max Renewals Allowed', type: 'number' },
+        { key: 'prevent_same_day_return', label: 'Prevent Same Day Return/Renew', type: 'boolean' },
         { key: 'library_open_time', label: 'Library Open Time', type: 'time' },
         { key: 'library_close_time', label: 'Library Close Time', type: 'time' },
     ];
@@ -76,12 +77,23 @@ const Settings = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 {field.label}
                             </label>
-                            <Input
-                                type={field.type}
-                                value={settings[field.key] || ''}
-                                onChange={(e) => handleChange(field.key, e.target.value)}
-                                placeholder={`Enter ${field.label}`}
-                            />
+                            {field.type === 'boolean' ? (
+                                <select
+                                    className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    value={settings[field.key] || 'false'}
+                                    onChange={(e) => handleChange(field.key, e.target.value)}
+                                >
+                                    <option value="false">Off (Allowed)</option>
+                                    <option value="true">On (Restricted)</option>
+                                </select>
+                            ) : (
+                                <Input
+                                    type={field.type}
+                                    value={settings[field.key] || ''}
+                                    onChange={(e) => handleChange(field.key, e.target.value)}
+                                    placeholder={`Enter ${field.label}`}
+                                />
+                            )}
                         </div>
                     ))}
 

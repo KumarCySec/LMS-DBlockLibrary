@@ -14,7 +14,8 @@ def create_app(config_class=Config):
     
     # Enable CORS
     from flask_cors import CORS
-    CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5173", "http://192.168.29.43:5173"]}}, supports_credentials=True)
+    CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+
     
     # Initialize scheduler
     if not scheduler.running:

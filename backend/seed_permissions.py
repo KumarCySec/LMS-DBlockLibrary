@@ -17,7 +17,7 @@ def seed_permissions():
             {"name": "approve_checkout", "description": "Approve checkout requests"},
             {"name": "staff_checkout", "description": "Auto-issue items without approval"},
             {"name": "approve_return", "description": "Process returns"},
-            {"name": "approve_renewal", "description": "Approve renewal requests"},
+            {"name": "approve_renew", "description": "Approve renewal requests"},
             
             # Users
             {"name": "manage_users", "description": "Approve, reject, manage users"},

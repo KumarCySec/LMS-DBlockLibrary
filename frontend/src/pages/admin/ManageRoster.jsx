@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Calendar, User as UserIcon, Save } from 'lucide-react';
 
@@ -180,17 +181,13 @@ const ManageRoster = () => {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Batch</label>
-                            <select
+                            <Input
+                                type="text"
                                 value={selectedBatch}
                                 onChange={(e) => setSelectedBatch(e.target.value)}
-                                className="w-full p-2 border rounded-lg bg-white"
+                                placeholder="Enter Batch (e.g. 2024)"
                                 disabled={!formData.department_id}
-                            >
-                                <option value="">All Batches</option>
-                                {['2022', '2023', '2024', '2025'].map(b => (
-                                    <option key={b} value={b}>{b}</option>
-                                ))}
-                            </select>
+                            />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

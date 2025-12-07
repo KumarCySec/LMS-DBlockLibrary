@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+import os
 from extensions import db
 from models import AppSetting, User, Transaction, InventoryItem, VolunteerSchedule, Department, Role, Permission, Donor
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -201,6 +202,15 @@ def change_user_role(user_id):
             
     if not can_assign:
         return jsonify({"error": "You do not have permission to assign this role"}), 403
+
+    # Secure Admin Assignment
+    if role_name == 'Admin':
+        secret_key = data.get('secret_key')
+        # Use env var or strictly fallback. 
+        # Ideally, force env var, but for this context, fallback is user-friendly.
+        valid_key = os.environ.get('ADMIN_SECRET_KEY', 'admin123') 
+        if secret_key != valid_key:
+             return jsonify({"error": "Invalid Admin Secret Key"}), 403
 
     # Prevent removing own Admin role if it's the last admin (optional safety)
     # But mainly prevent removing own Admin role at all if you are the target

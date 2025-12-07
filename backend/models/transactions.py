@@ -24,6 +24,7 @@ class Transaction(db.Model):
     renewal_count = db.Column(db.Integer, default=0)
     max_renewals = db.Column(db.Integer, default=4)
     fine_accrued = db.Column(db.Float, default=0.0)
+    fine_paid_amount = db.Column(db.Float, default=0.0)
     notes = db.Column(db.Text)
     return_feedback = db.Column(db.Text) # User feedback upon return
     return_request_date = db.Column(db.DateTime) # When user requested return

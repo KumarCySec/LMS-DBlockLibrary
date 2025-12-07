@@ -273,6 +273,25 @@ def request_return(tx_id):
     if tx.status not in ['ISSUED', 'OVERDUE']:
         return jsonify({"error": "Item is not currently issued"}), 400
 
+    # Check for Same Day Return Restriction
+    same_day_setting = AppSetting.query.get('prevent_same_day_return')
+    if same_day_setting and same_day_setting.value.lower() == 'true':
+        if tx.issue_date.date() == datetime.utcnow().date():
+             return jsonify({"error": "Same Day Return Forbidden: You cannot return an item on the same day it was issued."}), 400
+
+    # Check for Unpaid Fines (Books)
+    if tx.due_date and datetime.utcnow() > tx.due_date and tx.item.type != 'Laptop':
+        fine_per_day_setting = AppSetting.query.get('fine_per_day')
+        rate = float(fine_per_day_setting.value) if fine_per_day_setting else 1.0
+        overdue_days = (datetime.utcnow() - tx.due_date).days
+        current_fine = max(0, overdue_days * rate)
+        
+        if current_fine > (tx.fine_paid_amount or 0):
+             return jsonify({
+                 "error": f"Outstanding Fine: ₹{current_fine - (tx.fine_paid_amount or 0):.2f}. Please pay the fine before returning.",
+                 "fine_outstanding": True
+             }), 400
+
     # Check user role for auto-return
     user = User.query.get(current_user_id)
     is_student = False
@@ -347,6 +366,13 @@ def approve_return(tx_id):
     
     if tx.status not in ['ISSUED', 'OVERDUE', 'RETURN_REQUESTED']:
         return jsonify({"error": "Invalid transaction status for return"}), 400
+
+    # Check for Same Day Return Restriction (Staff Override? No, rule implies strictness, but maybe allow if explicitly needed. Let's enforce for now)
+    if action == 'approve': # Only block actual return, not rejection
+        same_day_setting = AppSetting.query.get('prevent_same_day_return')
+        if same_day_setting and same_day_setting.value.lower() == 'true':
+            if tx.issue_date.date() == datetime.utcnow().date():
+                return jsonify({"error": "Same Day Return Forbidden: Cannot return on same day as issue."}), 400
 
     if action == 'reject':
         if not reason:
@@ -489,6 +515,25 @@ def request_renewal(tx_id):
         
     if tx.status != 'ISSUED':
         return jsonify({"error": "Only issued items can be renewed"}), 400
+
+    # Check for Same Day Renewal Restriction
+    same_day_setting = AppSetting.query.get('prevent_same_day_return')
+    if same_day_setting and same_day_setting.value.lower() == 'true':
+        if tx.issue_date.date() == datetime.utcnow().date():
+             return jsonify({"error": "Same Day Renewal Forbidden: You cannot renew an item on the same day it was issued."}), 400
+
+    # Check for Unpaid Fines (Books)
+    if tx.due_date and datetime.utcnow() > tx.due_date and tx.item.type != 'Laptop':
+        fine_per_day_setting = AppSetting.query.get('fine_per_day')
+        rate = float(fine_per_day_setting.value) if fine_per_day_setting else 1.0
+        overdue_days = (datetime.utcnow() - tx.due_date).days
+        current_fine = max(0, overdue_days * rate)
+        
+        if current_fine > (tx.fine_paid_amount or 0):
+             return jsonify({
+                 "error": f"Outstanding Fine: ₹{current_fine - (tx.fine_paid_amount or 0):.2f}. Please pay the fine before renewing.",
+                 "fine_outstanding": True
+             }), 400
         
     # Check max renewals
     max_renewals_setting = AppSetting.query.get('max_renewals')
@@ -607,21 +652,32 @@ def my_transactions():
                     "issue_date": tx.issue_date,
                     "due_date": tx.due_date,
                     "return_date": tx.return_date,
+                    "return_date": tx.return_date,
                     "fine": tx.fine_accrued,
+                    "fine_paid_amount": tx.fine_paid_amount or 0,
                     "rent_amount": tx.rent_amount,
                     "current_rent": 0,
+                    "current_fine": 0,
                     "payment_status": tx.payment_status,
                     "rejection_reason": tx.rejection_reason,
                     "renewal_count": tx.renewal_count or 0
                 }
                 
-                # Calculate live rent for active laptop loans
-                if tx.status == 'ISSUED' and tx.item and tx.item.type == 'Laptop':
-                    rent_days = max(1, (datetime.utcnow().date() - tx.issue_date.date()).days)
-                    # Ideally cache this setting or fetch once outside loop, but for 'my' txs count is low.
-                    daily_rent_setting = AppSetting.query.get('laptop_daily_rent')
-                    daily_rent = float(daily_rent_setting.value) if daily_rent_setting else 10.0
-                    data_dict["current_rent"] = rent_days * daily_rent
+                # Dynamic Calculations
+                if tx.status in ['ISSUED', 'OVERDUE', 'RETURN_REQUESTED', 'RENEW_REQUESTED']:
+                    # Laptop Rent
+                    if tx.item and tx.item.type == 'Laptop':
+                        rent_days = max(1, (datetime.utcnow().date() - tx.issue_date.date()).days)
+                        daily_rent_setting = AppSetting.query.get('laptop_daily_rent')
+                        daily_rent = float(daily_rent_setting.value) if daily_rent_setting else 10.0
+                        data_dict["current_rent"] = rent_days * daily_rent
+                    
+                    # Book Fine
+                    elif tx.due_date and datetime.utcnow() > tx.due_date:
+                        fine_per_day_setting = AppSetting.query.get('fine_per_day')
+                        rate = float(fine_per_day_setting.value) if fine_per_day_setting else 1.0
+                        overdue_days = (datetime.utcnow() - tx.due_date).days
+                        data_dict["current_fine"] = max(0, overdue_days * rate)
                 
                 result.append(data_dict)
             except:
