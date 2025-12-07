@@ -25,8 +25,8 @@ class EmailService:
 
             msg.attach(MIMEText(body, 'html'))
 
-            # Setup server
-            server = smtplib.SMTP('smtp.gmail.com', 587)
+            # Setup server with timeout
+            server = smtplib.SMTP('smtp.gmail.com', 587, timeout=10)
             server.starttls()
             server.login(sender_email, sender_password)
             text = msg.as_string()
