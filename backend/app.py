@@ -16,6 +16,18 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
+
+    # Auto-create tables and seed data (Critical for Render ephemeral DB)
+    with app.app_context():
+        db.create_all()
+        # check if roles exist, if not, seed
+        try:
+            from models import Role # Import inside to verify table presence
+            if not Role.query.first():
+                from seed import seed_data
+                seed_data()
+        except Exception as e:
+            print(f"Seeding skipped or failed: {e}")
     
     # Enable CORS
     from flask_cors import CORS
