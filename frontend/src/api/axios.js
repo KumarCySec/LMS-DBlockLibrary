@@ -1,7 +1,11 @@
 import axios from 'axios';
 
+// Construct base URL: if env var exists, append /api, else use relative /api
+const envUrl = import.meta.env.VITE_API_BASE_URL;
+const baseURL = envUrl ? `${envUrl.replace(/\/$/, '')}/api` : "/api";
+
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || "/api",
+    baseURL: baseURL,
     withCredentials: true,
     headers: {
         'Content-Type': 'application/json',
