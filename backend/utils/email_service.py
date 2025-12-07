@@ -25,16 +25,17 @@ class EmailService:
 
             msg.attach(MIMEText(body, 'html'))
 
-            # Setup server with aggressive timeout (5s) to prevent Gunicorn worker kill
-            server = smtplib.SMTP('smtp.gmail.com', 587, timeout=5)
-            server.starttls()
+            # Use SMTP_SSL on port 465 (Wrapper for SSL)
+            # This avoids StartTLS and is often more reliable on cloud networks causing [Errno 101]
+            server = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10)
+            # server.starttls() # Not needed for SMTP_SSL
             server.login(sender_email, sender_password)
             text = msg.as_string()
             server.sendmail(sender_email, to_email, text)
             try:
                 server.quit()
             except:
-                pass # quitting might fail if connection dropped, ignore
+                pass
             
             print(f"Email sent successfully to {to_email}")
             return True
