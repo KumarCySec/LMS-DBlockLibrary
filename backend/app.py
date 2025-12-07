@@ -2,6 +2,11 @@ from flask import Flask
 from config import Config
 from extensions import db, migrate, jwt, scheduler
 import models # Ensure models are imported for migration detection
+from dotenv import load_dotenv
+import os
+
+# Load env variables (for local dev)
+load_dotenv()
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -14,7 +19,9 @@ def create_app(config_class=Config):
     
     # Enable CORS
     from flask_cors import CORS
-    CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+    # Allow Frontend URL from env or default to *
+    frontend_url = os.environ.get('FRONTEND_URL', '*')
+    CORS(app, resources={r"/api/*": {"origins": frontend_url}}, supports_credentials=True)
 
     
     # Initialize scheduler
@@ -56,4 +63,5 @@ def create_app(config_class=Config):
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True, host='0.0.0.0', port=5176)
+    port = int(os.environ.get('PORT', 5176))
+    app.run(debug=True, host='0.0.0.0', port=port)

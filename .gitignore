@@ -38,3 +38,8 @@ backend/instance/
 # Env files
 .env
 *.env
+backend/.env
+
+# Backups
+backups/
+*.db.bak

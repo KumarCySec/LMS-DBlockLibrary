@@ -192,7 +192,9 @@ def assign_role(user_id):
         secret_key = data.get('secret_key')
         # Use env var or strictly fallback. 
         # Ideally, force env var, but for this context, fallback is user-friendly.
-        valid_key = os.environ.get('ADMIN_SECRET_KEY', 'admin123') 
+        valid_key = os.environ.get('ADMIN_SECRET_KEY')
+        if not valid_key:
+             return jsonify({"error": "Admin Secret Key not configured on server"}), 500 
         if secret_key != valid_key:
              return jsonify({"error": "Invalid Admin Secret Key"}), 403
 
@@ -341,7 +343,9 @@ def reset_transactions():
     reset_type = data.get('type') # 'all', 'date', or 'history'
 
     # 2. Secret Key Check
-    valid_key = os.environ.get('ADMIN_SECRET_KEY', 'admin123')
+    valid_key = os.environ.get('ADMIN_SECRET_KEY')
+    if not valid_key:
+        return jsonify({"error": "Admin Secret Key not configured on server"}), 500
     if secret_key != valid_key:
         return jsonify({"error": "Invalid Admin Secret Key"}), 403
 
@@ -453,7 +457,9 @@ def delete_users():
     secret_key = data.get('secret_key')
 
     # 2. Secret Key Check
-    valid_key = os.environ.get('ADMIN_SECRET_KEY', 'admin123')
+    valid_key = os.environ.get('ADMIN_SECRET_KEY')
+    if not valid_key:
+        return jsonify({"error": "Admin Secret Key not configured on server"}), 500
     if secret_key != valid_key:
         return jsonify({"error": "Invalid Admin Secret Key"}), 403
 
