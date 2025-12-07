@@ -1,13 +1,13 @@
-from app import create_app
+# Removed global app creation to allow import in app.py
+
+
 from extensions import db
 from models import User, Role, Permission, Department, AppSetting
 from werkzeug.security import generate_password_hash
 
-app = create_app()
-
 def seed_data():
-    with app.app_context():
-        print("Seeding data...")
+    # Assumes running inside an app context
+    print("Seeding data...")
         
         # 1. Roles
         roles = ['Admin', 'Incharge', 'Volunteer', 'Student']
