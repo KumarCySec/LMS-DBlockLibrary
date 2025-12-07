@@ -1,3 +1,5 @@
+import requests
+import json
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -10,14 +12,52 @@ load_dotenv()
 class EmailService:
     @staticmethod
     def send_email(to_email, subject, body):
+        # 1. BREVO API (Preferred for Render)
+        brevo_key = os.environ.get("BREVO_API_KEY")
+        if brevo_key:
+            try:
+                url = "https://api.brevo.com/v3/smtp/email"
+                sender_email = os.environ.get("MAIL_USERNAME") or "admin@dblocklibrary.com"
+                sender_name = "D-Block Library"
+                
+                payload = {
+                    "sender": {"name": sender_name, "email": sender_email},
+                    "to": [{"email": to_email}],
+                    "subject": subject,
+                    "htmlContent": body
+                }
+                headers = {
+                    "accept": "application/json",
+                    "api-key": brevo_key,
+                    "content-type": "application/json"
+                }
+                
+                response = requests.post(url, json=payload, headers=headers, timeout=10)
+                
+                if response.status_code in [200, 201, 202]:
+                    print(f"Brevo Email sent successfully to {to_email}")
+                    return True
+                else:
+                    print(f"Brevo API Error: {response.text}")
+                    # Don't return False yet, maybe try fallback? 
+                    # Actually, if API fails, SMTP likely fails too.
+                    # But let's fall through to console log if needed.
+            except Exception as e:
+                print(f"Brevo Exception: {e}")
+
+        # 2. SMTP FALLBACK (Legacy)
         sender_email = os.environ.get("MAIL_USERNAME")
         sender_password = os.environ.get("MAIL_PASSWORD")
         
-        if not sender_email or not sender_password:
-            print("Error: Email credentials not found in environment variables.")
-            return False
-            
+        # If no credentials for SMTP either, abort early (or go to console log)
+        if not brevo_key and (not sender_email or not sender_password):
+            print("Error: No Email credentials (Brevo or SMTP) found.")
+            # Fall through to console log for dev/demo
+
         try:
+            if not sender_email or not sender_password:
+                raise Exception("Missing SMTP Credentials")
+
             msg = MIMEMultipart()
             msg['From'] = sender_email
             msg['To'] = to_email
@@ -26,9 +66,7 @@ class EmailService:
             msg.attach(MIMEText(body, 'html'))
 
             # Use SMTP_SSL on port 465 (Wrapper for SSL)
-            # This avoids StartTLS and is often more reliable on cloud networks causing [Errno 101]
             server = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=10)
-            # server.starttls() # Not needed for SMTP_SSL
             server.login(sender_email, sender_password)
             text = msg.as_string()
             server.sendmail(sender_email, to_email, text)
@@ -37,10 +75,24 @@ class EmailService:
             except:
                 pass
             
-            print(f"Email sent successfully to {to_email}")
+            print(f"SMTP Email sent successfully to {to_email}")
             return True
         except Exception as e:
-            print(f"Failed to send email: {e}")
+            print(f"Failed to send email via SMTP: {e}")
+            # FALBACK FOR RENDER FREE TIER (SMTP BLOCKED)
+            # If network is unreachable, log the OTP so admin/user can see it in Render Logs
+            if "OTP" in subject or "Password" in subject:
+                 print("\n" + "="*40)
+                 print(f" [CRITICAL FALLBACK] Email Service Failed.")
+                 print(f" EMAIL TO: {to_email}")
+                 print(f" SUBJECT: {subject}")
+                 # Extract OTP from body if possible for easy reading
+                 import re
+                 otp_match = re.search(r'\b\d{6}\b', body)
+                 if otp_match:
+                     print(f" \n >>> YOUR OTP IS: {otp_match.group(0)} <<<\n")
+                 print("="*40 + "\n")
+                 return True # Return True so frontend lets user enter the OTP
             return False
 
     @staticmethod

@@ -18,3 +18,4 @@ werkzeug
 email-validator
 # Database drivers (keep generic)
 # mysql-connector-python # Uncomment if using MySQL
+requests

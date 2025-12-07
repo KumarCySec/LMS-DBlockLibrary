@@ -214,7 +214,11 @@ def update_me():
         
         # Allowed fields
         if 'phone_number' in data:
-            user.phone_number = data['phone_number']
+            new_phone = str(data['phone_number']).strip()
+            # Basic validation could go here
+            user.phone_number = new_phone
+            print(f"Updating phone for {user.email} to {new_phone}")
+
         if 'email' in data:
             # TODO: Validate email format?
             user.email = data['email']
