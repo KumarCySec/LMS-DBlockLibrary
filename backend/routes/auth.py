@@ -243,17 +243,18 @@ def forgot_password():
     # Rate Limiting & Cooldown
     current_time = datetime.utcnow()
     
-    # 1. Cooldown Check (2 minutes)
-    if user.otp_last_sent_at and (current_time - user.otp_last_sent_at) < timedelta(minutes=2):
-        return jsonify({"error": "Please wait a few minutes before requesting another OTP."}), 429
+    # 1. Cooldown Check (30 seconds)
+    if user.otp_last_sent_at and (current_time - user.otp_last_sent_at) < timedelta(seconds=30):
+        wait_time = 30 - int((current_time - user.otp_last_sent_at).total_seconds())
+        return jsonify({"error": f"Please wait {wait_time} seconds before requesting another OTP."}), 429
         
-    # 2. Daily Limit Check (Max 3 per day)
+    # 2. Daily Limit Check (Max 5 per day)
     # Handle None values safely
     sent_count = user.otp_sent_count if user.otp_sent_count is not None else 0
     
     if user.otp_last_sent_at and user.otp_last_sent_at.date() == current_time.date():
-        if sent_count >= 3:
-             return jsonify({"error": "Daily OTP limit reached. Please try again tomorrow."}), 429
+        if sent_count >= 5:
+             return jsonify({"error": "Daily OTP limit (5) reached. Please try again tomorrow."}), 429
         user.otp_sent_count = sent_count + 1
     else:
         # Reset count for new day
