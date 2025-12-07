@@ -21,6 +21,8 @@ def create_app(config_class=Config):
     from flask_cors import CORS
     # Allow Frontend URL from env or default to *
     frontend_url = os.environ.get('FRONTEND_URL', '*')
+    if frontend_url != '*':
+        frontend_url = [url.strip() for url in frontend_url.split(',')]
     CORS(app, resources={r"/api/*": {"origins": frontend_url}}, supports_credentials=True)
 
     
