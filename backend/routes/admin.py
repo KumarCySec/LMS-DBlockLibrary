@@ -154,6 +154,26 @@ def update_role_permissions():
     db.session.commit()
     return jsonify({"message": f"Permissions updated for {role_name}"}), 200
 
+@admin_bp.route('/roles/<int:role_id>/permissions', methods=['POST'])
+@jwt_required()
+@permission_required('manage_roles')
+def update_role_permissions_by_id(role_id):
+    role = Role.query.get_or_404(role_id)
+    data = request.get_json()
+    perm_names = data.get('permissions', [])
+    
+    # Clear existing
+    role.permissions = []
+    
+    # Add new
+    for pname in perm_names:
+        perm = Permission.query.filter_by(name=pname).first()
+        if perm:
+            role.permissions.append(perm)
+            
+    db.session.commit()
+    return jsonify({"message": f"Permissions updated for {role.name}"}), 200
+
 @admin_bp.route('/users/<int:user_id>/role', methods=['POST'])
 @jwt_required()
 def assign_role(user_id):
