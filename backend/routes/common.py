@@ -251,20 +251,22 @@ def request_open():
     schedule = VolunteerSchedule.query.filter_by(date=today).first()
     
     target_user_ids = set()
+    is_fallback = False
     
     if schedule:
         if schedule.volunteer_1_id: target_user_ids.add(schedule.volunteer_1_id)
         if schedule.volunteer_2_id: target_user_ids.add(schedule.volunteer_2_id)
     
-    # If no schedule or no volunteers assigned, fallback to all Incharge/Volunteers
+    # If no schedule or no volunteers assigned, fallback to Incharge AND Admin
     if not target_user_ids:
-        roles = Role.query.filter(Role.name.in_(['Incharge', 'Volunteer'])).all()
+        is_fallback = True
+        roles = Role.query.filter(Role.name.in_(['Incharge', 'Admin'])).all()
         for role in roles:
             for u in role.users:
                 target_user_ids.add(u.id)
                 
     if not target_user_ids:
-         return jsonify({"message": "No volunteers (Incharge/Volunteer) found to notify. Please check user roles."}), 400
+         return jsonify({"message": "No volunteers, Incharges, or Admins found to notify."}), 400
          
     # Create Notifications
     count = 0
@@ -275,7 +277,7 @@ def request_open():
             user_id=uid,
             type='request_open',
             title='Library Open Request',
-            body=f"{user.name} ({user.roll_number}) is requesting the library to be opened.",
+            body=f"{user.name} ({user.roll_number}) is requesting the library to be opened." + (" (No volunteers on roster today)" if is_fallback else ""),
             read_flag=False
         )
         db.session.add(notif)
@@ -283,4 +285,7 @@ def request_open():
         
     db.session.commit()
     
-    return jsonify({"message": f"Request sent to {count} volunteers"}), 200
+    return jsonify({
+        "message": f"Request sent to {count} users", 
+        "fallback": is_fallback
+    }), 200
