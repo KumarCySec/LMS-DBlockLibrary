@@ -235,7 +235,7 @@ const Profile = () => {
                     onClick={() => setShowDevCard(true)}
                     className="text-xs font-medium text-indigo-400 hover:text-indigo-600 transition-colors flex items-center justify-center mx-auto"
                 >
-                    <span className="bg-indigo-50 px-3 py-1 rounded-full">More about developer ✨</span>
+                    <span className="bg-indigo-50 px-3 py-1 rounded-full">About Developer</span>
                 </button>
             </div>
 
@@ -283,7 +283,7 @@ const Profile = () => {
                             {/* Name & Title */}
                             <h2 className="text-2xl font-bold text-gray-800 mb-1 text-center">Kishore Kumar S</h2>
                             <p className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 font-semibold text-sm mb-4">
-                                Full Stack Developer
+                                Software Craftsman with AI
                             </p>
 
                             {/* Details Chips */}
@@ -301,15 +301,26 @@ const Profile = () => {
 
                             {/* Quote/Bio */}
                             <p className="text-center text-gray-500 text-sm italic leading-relaxed mb-6">
-                                "Crafting digital experiences with code and creativity. Building the future, one line at a time."
+                                Crafts systems with patience, precision, and a little bit of madness.
+                                Not a magician — just really good at debugging life.
                             </p>
 
                             {/* Contact/Social placeholders */}
                             <div className="flex gap-4">
-                                <Button size="sm" className="rounded-full bg-gray-900 text-white hover:bg-gray-800 px-6">
-                                    Connect
-                                </Button>
+                                <a
+                                    href="https://www.linkedin.com/in/kishorekumaroffsec"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    <Button
+                                        size="sm"
+                                        className="rounded-full bg-gray-900 text-white hover:bg-gray-800 px-6"
+                                    >
+                                        Connect
+                                    </Button>
+                                </a>
                             </div>
+
                         </div>
                     </div>
                 </div>
