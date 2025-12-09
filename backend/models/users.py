@@ -46,9 +46,15 @@ class User(db.Model):
 
     @property
     def role(self):
-        if self.roles:
-            return self.roles[0].name
-        return "Student"
+        if not self.roles:
+            return "Student"
+        
+        role_names = [r.name for r in self.roles]
+        if "Admin" in role_names: return "Admin"
+        if "Incharge" in role_names: return "Incharge"
+        if "Volunteer" in role_names: return "Volunteer"
+        
+        return role_names[0]
 
     def get_all_permissions(self):
         perms = set()

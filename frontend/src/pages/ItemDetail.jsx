@@ -211,6 +211,12 @@ const ItemDetail = () => {
                                         <span className="text-gray-900">{item.model}</span>
                                     </div>
                                 )}
+                                {item.specs && (
+                                    <div className="col-span-2 mt-2 bg-gray-50 p-2 rounded border border-gray-100">
+                                        <span className="block text-xs font-bold text-gray-500 uppercase mb-1">Specifications</span>
+                                        <p className="text-sm text-gray-900 whitespace-pre-line leading-relaxed">{item.specs}</p>
+                                    </div>
+                                )}
                                 <div>
                                     <span className="block text-gray-500">Donor</span>
                                     {item.donor ? (
@@ -268,7 +274,7 @@ const ItemDetail = () => {
                                                         : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
                                             )}
                                         >
-                                            B-{copy.acc_no}
+                                            {copy.acc_no}
                                             <span className="block text-[10px] opacity-75">{copy.status}</span>
                                             {copy.status !== 'AVAILABLE' && (
                                                 <XCircle className="w-3 h-3 absolute top-1 right-1 text-rose-500" />

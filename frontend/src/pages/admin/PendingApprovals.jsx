@@ -185,7 +185,7 @@ const PendingApprovals = () => {
                                     </div>
                                     <div>
                                         <p className="text-xs text-gray-500 uppercase font-bold">Phone</p>
-                                        <p className="font-medium text-gray-900">{selectedUser.phone || 'N/A'}</p>
+                                        <p className="font-medium text-gray-900">{selectedUser.phone_number || 'N/A'}</p>
                                     </div>
                                 </div>
                             </div>

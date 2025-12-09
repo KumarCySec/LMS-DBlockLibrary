@@ -243,9 +243,11 @@ const ManageUsers = () => {
                                             <h3 className="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">{user.name}</h3>
                                             <p className="text-xs text-gray-500">{user.roll_number} • {user.email}</p>
                                             <div className="flex gap-1 mt-1.5 flex-wrap">
-                                                <span className="text-[10px] bg-gray-100 px-2 py-0.5 rounded-full text-gray-600 border border-gray-200 font-medium">
-                                                    {user.role}
-                                                </span>
+                                                {(user.roles && user.roles.length > 0 ? user.roles : [user.role || 'Student']).map(r => (
+                                                    <span key={r} className="text-[10px] bg-gray-100 px-2 py-0.5 rounded-full text-gray-600 border border-gray-200 font-medium">
+                                                        {r}
+                                                    </span>
+                                                ))}
                                                 {user.department_name && (
                                                     <span className="text-[10px] bg-blue-50 px-2 py-0.5 rounded-full text-blue-600 border border-blue-100">
                                                         {user.department_name}

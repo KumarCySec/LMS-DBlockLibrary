@@ -201,7 +201,11 @@ def assign_role(user_id):
         # Check for specific permission like 'assign_role_volunteer'
         perm_name = f"assign_role_{role_name.lower()}"
         perms = current_user.get_all_permissions()
+        
+        # Allow if they have specific permission OR 'manage_users' (but not for Admin role)
         if perm_name in perms:
+            can_assign = True
+        elif 'manage_users' in perms and role_name != 'Admin':
             can_assign = True
             
     if not can_assign:
