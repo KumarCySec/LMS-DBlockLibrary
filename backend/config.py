@@ -6,15 +6,16 @@ class Config:
     # Load from env in production; use obvious weak defaults ONLY for local dev
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-prod")
 
-    # Build a proper SQLAlchemy URI
+    # Absolute-safe SQLite DB path (works on Windows, Linux, PythonAnywhere)
     _db_path = os.environ.get("DB_PATH")
-    if _db_path:
-        # Treat DB_PATH as a filesystem path and convert to sqlite URL
-        SQLALCHEMY_DATABASE_URI = f"sqlite:///{_db_path}"
-    else:
-        # Fall back to DATABASE_URL if set (e.g. Postgres on Render)
-        # or local sqlite file in instance/
-        SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or "sqlite:///instance/lms.db"
+
+    if not _db_path:
+        # Build absolute path to backend/instance/lms.db
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+        _db_path = os.path.join(BASE_DIR, "instance", "lms.db")
+
+    # DATABASE_URL (Postgres etc.) still takes priority if set
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL") or f"sqlite:///{_db_path}"
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
