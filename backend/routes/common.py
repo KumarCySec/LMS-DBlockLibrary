@@ -264,7 +264,7 @@ def request_open():
                 target_user_ids.add(u.id)
                 
     if not target_user_ids:
-         return jsonify({"message": "No volunteers found to notify"}), 404
+         return jsonify({"message": "No volunteers (Incharge/Volunteer) found to notify. Please check user roles."}), 400
          
     # Create Notifications
     count = 0
