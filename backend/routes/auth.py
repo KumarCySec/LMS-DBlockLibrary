@@ -23,6 +23,24 @@ def register():
     if User.query.filter((User.email == data['email']) | (User.roll_number == data['roll_number'])).first():
         return jsonify({"error": "User with this email or roll number already exists"}), 409
 
+    # Auto-detect department from roll number if not provided or valid
+    if not data.get('department_id'):
+        import re
+        # Extra code from roll number, e.g., 23ECE25 -> ECE
+        # Pattern: digits (batch) + LETTERS (dept) + digits (id)
+        match = re.search(r'[0-9]+([A-Z]+)[0-9]+', data['roll_number'].upper())
+        if match:
+            dept_code = match.group(1)
+            # Find department by name (assuming name matches code like ECE, CSE)
+            from models import Department
+            dept = Department.query.filter_by(name=dept_code).first()
+            if dept:
+                data['department_id'] = dept.id
+                print(f"Auto-assigned department {dept.name} for {data['roll_number']}")
+            else:
+                # Try partial match or mapping if needed (optional)
+                pass
+
     # Create Student
     new_user = User(
         name=data['name'],
@@ -30,7 +48,7 @@ def register():
         email=data['email'],
         password_hash=generate_password_hash(data['password']),
         batch=data['batch'],
-        department_id=data['department_id'],
+        department_id=data.get('department_id'), # Use .get() as it might be None
         phone_number=data.get('phone_number'),
         status='pending_approval' # Default status
     )
@@ -61,6 +79,19 @@ def login():
         if user.status == 'rejected' and user.rejection_reason:
             msg = f"Account Rejected: {user.rejection_reason}"
         return jsonify({"error": msg}), 403
+
+    # Self-heal: If department is missing, try to detect from roll number
+    if not user.department_id and user.roll_number:
+        import re
+        match = re.search(r'[0-9]+([A-Z]+)[0-9]+', user.roll_number.upper())
+        if match:
+            dept_code = match.group(1)
+            from models import Department
+            dept = Department.query.filter_by(name=dept_code).first()
+            if dept:
+                user.department_id = dept.id
+                db.session.commit()
+                print(f"Self-healed department for {user.name} to {dept.name}")
 
     # Create JWT
     access_token = create_access_token(identity=str(user.id))
@@ -104,6 +135,7 @@ def user_to_dict(user):
             "id": user.id,
             "name": getattr(user, "name", None),
             "email": getattr(user, "email", None),
+            "phone_number": getattr(user, "phone_number", None),  # Added phone_number
             "roll_number": getattr(user, "roll_number", None),
             "role": role_name,
             "permissions": permissions,
