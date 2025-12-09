@@ -12,16 +12,47 @@ announcements_bp = Blueprint('announcements', __name__)
 def get_announcements():
     # Return all for admin, or targeted for user
     # For now, just return all created announcements for admin view
-    anns = Announcement.query.order_by(Announcement.created_at.desc()).all()
-    return jsonify([{
-        "id": a.id,
-        "title": a.title,
-        "message": a.message,
-        "target_type": a.target_type,
-        "target_value": a.target_value,
-        "created_at": a.created_at,
-        "created_by": a.created_by.name if a.created_by else "Unknown"
-    } for a in anns]), 200
+    # Filter announcements for the current user
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+    
+    if not user:
+        return jsonify([]), 200
+
+    query = Announcement.query.order_by(Announcement.created_at.desc())
+    all_anns = query.all()
+    
+    # Filter in Python (easier for hybrid logic) or SQL
+    filtered_anns = []
+    for a in all_anns:
+        is_relevant = False
+        if a.target_type == 'all':
+            is_relevant = True
+        elif a.target_type == 'role' and user.role == a.target_value:
+            is_relevant = True
+        elif a.target_type == 'department' and user.department and user.department.name == a.target_value:
+             is_relevant = True
+        elif a.target_type == 'batch' and user.batch == a.target_value:
+             is_relevant = True
+        elif a.target_type == 'specific_user' and str(a.target_value) == str(user.id):
+             is_relevant = True
+        # For overdue/checked_out, we'd need complex logic. For now, show them if user has that status?
+        # Simpler: If user is admin, show all?
+        if user.role in ['Admin', 'Incharge']: # Admins see all
+            is_relevant = True
+            
+        if is_relevant:
+            filtered_anns.append({
+                "id": a.id,
+                "title": a.title,
+                "message": a.message,
+                "target_type": a.target_type,
+                "target_value": a.target_value,
+                "created_at": a.created_at.isoformat(), # Use isoformat to prevent jsonify issues
+                "created_by": a.created_by.name if a.created_by else "Unknown"
+            })
+            
+    return jsonify(filtered_anns), 200
 
 @announcements_bp.route('', methods=['POST'])
 @jwt_required()

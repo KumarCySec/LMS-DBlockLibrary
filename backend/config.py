@@ -8,7 +8,8 @@ class Config:
          # For now, let's allow a fallback BUT warn? Or just rely on .env being loaded.
          pass 
 
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///lms.db'
+    # Database: Use DB_PATH if strictly provided (Render Persistent Disk), else DATABASE_URL, else local sqlite
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DB_PATH') or os.environ.get('DATABASE_URL') or 'sqlite:///lms.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'jwt-secret-key-change-in-prod'

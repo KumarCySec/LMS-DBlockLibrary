@@ -21,7 +21,10 @@ def seed_data():
     # 2. Permissions
     permissions = [
         'manage_inventory', 'approve_checkout', 'approve_return', 'approve_renew',
-        'manage_settings', 'manage_users', 'view_analytics', 'update_library_status'
+        'manage_settings', 'manage_users', 'view_analytics', 'update_library_status',
+        'manage_transactions', 'staff_checkout', 'manage_roles_permissions', 
+        'manage_donors', 'manage_roster', 'import_data', 'manage_departments',
+        'manage_system_reset'
     ]
     perm_objects = {}
     for p_name in permissions:

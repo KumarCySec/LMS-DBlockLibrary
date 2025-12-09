@@ -268,7 +268,7 @@ const ItemDetail = () => {
                                                         : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
                                             )}
                                         >
-                                            {copy.acc_no}
+                                            B-{copy.acc_no}
                                             <span className="block text-[10px] opacity-75">{copy.status}</span>
                                             {copy.status !== 'AVAILABLE' && (
                                                 <XCircle className="w-3 h-3 absolute top-1 right-1 text-rose-500" />
