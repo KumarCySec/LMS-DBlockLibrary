@@ -25,6 +25,7 @@ const Profile = () => {
     const { user, logout, checkAuth } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [showDevCard, setShowDevCard] = useState(false);
     const [formData, setFormData] = useState({
         phone_number: '',
         email: ''
@@ -227,8 +228,93 @@ const Profile = () => {
                     )}
                 </div>
             </Card>
+
+            {/* Developer Trigger */}
+            <div className="text-center py-2 shrink-0">
+                <button
+                    onClick={() => setShowDevCard(true)}
+                    className="text-xs font-medium text-indigo-400 hover:text-indigo-600 transition-colors flex items-center justify-center mx-auto"
+                >
+                    <span className="bg-indigo-50 px-3 py-1 rounded-full">More about developer ✨</span>
+                </button>
+            </div>
+
+            {/* Developer Card Modal */}
+            {showDevCard && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300" onClick={() => setShowDevCard(false)}>
+                    <div
+                        className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Premium Background Header */}
+                        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500">
+                            {/* Decorative circles */}
+                            <div className="absolute top-[-20%] right-[-10%] w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+                            <div className="absolute bottom-[-10%] left-[-10%] w-32 h-32 bg-indigo-900/20 rounded-full blur-xl"></div>
+                        </div>
+
+                        {/* Close Button */}
+                        <button
+                            onClick={() => setShowDevCard(false)}
+                            className="absolute top-3 right-3 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md transition-all z-20"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+
+                        <div className="relative flex flex-col items-center pt-16 pb-8 px-6">
+                            {/* Profile Image with Glow */}
+                            <div className="relative mb-4 group">
+                                <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500 to-pink-500 rounded-full blur-lg opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                                <div className="relative w-28 h-28 rounded-full border-4 border-white shadow-xl overflow-hidden bg-gray-100">
+                                    {/* Placeholder - User should replace '/developer.png' in public folder */}
+                                    <img
+                                        src="/developer.png"
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = "https://ui-avatars.com/api/?name=Kishore+Kumar&background=6366f1&color=fff&size=256";
+                                        }}
+                                        alt="Kishore Kumar S"
+                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                    />
+                                </div>
+                                <div className="absolute bottom-1 right-1 bg-green-500 w-5 h-5 rounded-full border-2 border-white shadow-sm" title="Online"></div>
+                            </div>
+
+                            {/* Name & Title */}
+                            <h2 className="text-2xl font-bold text-gray-800 mb-1 text-center">Kishore Kumar S</h2>
+                            <p className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 font-semibold text-sm mb-4">
+                                Full Stack Developer
+                            </p>
+
+                            {/* Details Chips */}
+                            <div className="flex flex-wrap gap-2 justify-center mb-6">
+                                <span className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-semibold border border-indigo-100">
+                                    Batch 2027
+                                </span>
+                                <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-semibold border border-purple-100">
+                                    ECE Dept
+                                </span>
+                            </div>
+
+                            {/* Divider */}
+                            <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent mb-6"></div>
+
+                            {/* Quote/Bio */}
+                            <p className="text-center text-gray-500 text-sm italic leading-relaxed mb-6">
+                                "Crafting digital experiences with code and creativity. Building the future, one line at a time."
+                            </p>
+
+                            {/* Contact/Social placeholders */}
+                            <div className="flex gap-4">
+                                <Button size="sm" className="rounded-full bg-gray-900 text-white hover:bg-gray-800 px-6">
+                                    Connect
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
-
 export default Profile;
