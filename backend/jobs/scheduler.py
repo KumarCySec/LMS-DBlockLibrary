@@ -79,16 +79,34 @@ def check_overdue_items():
                 
         db.session.commit()
 
+# Helper for self-ping
+def keep_alive():
+    """Ping the server to prevent Render from sleeping."""
+    try:
+        import requests
+        import os
+        # Use dynamic port, default to 5176 as per app.py
+        port = os.environ.get('PORT', 5176)
+        # Assuming localhost loopback works on Render
+        url = f"http://127.0.0.1:{port}/api/common/ping"
+        
+        # Short timeout to avoid blocking
+        response = requests.get(url, timeout=5)
+        print(f"Keep-alive ping status: {response.status_code}")
+    except Exception as e:
+        print(f"Keep-alive ping failed: {e}")
+
 def init_scheduler(app):
     # Add jobs
     # 'interval' or 'cron'. 'cron' is better for daily jobs.
-    # For demo/testing, maybe run every minute? No, let's stick to daily but allow manual trigger.
     
     # Run every day at 8 AM
     scheduler.add_job(check_due_items, 'cron', hour=8, minute=0, id='check_due_items')
     
     # Run every day at 1 AM
     scheduler.add_job(check_overdue_items, 'cron', hour=1, minute=0, id='check_overdue_items')
+
+    # Add keep-alive job - run every 10 minutes (Render sleeps after 15)
+    scheduler.add_job(keep_alive, 'interval', minutes=10, id='keep_alive_job')
     
-    # Store app in scheduler for context
     scheduler.app = app

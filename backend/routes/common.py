@@ -9,6 +9,10 @@ common_bp = Blueprint('common', __name__)
 
 # --- Library Status ---
 
+@common_bp.route('/ping', methods=['GET'])
+def ping():
+    return jsonify({"message": "pong", "status": "active"}), 200
+
 @common_bp.route('/status', methods=['GET'])
 def get_status():
     try:
