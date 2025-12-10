@@ -163,7 +163,7 @@ const Home = () => {
             icon: Shield,
             link: '/admin/roles',
             color: 'bg-gray-100 text-gray-600',
-            perm: ['manage_settings']
+            perm: ['manage_roles']
         },
         {
             id: 'manage_users',
@@ -171,7 +171,7 @@ const Home = () => {
             icon: UserCog,
             link: '/admin/users',
             color: 'bg-cyan-100 text-cyan-600',
-            perm: ['approve_users', 'manage_settings']
+            perm: ['manage_users', 'approve_users']
         },
         {
             id: 'departments',
@@ -195,7 +195,7 @@ const Home = () => {
             icon: Heart,
             link: '/admin/donors',
             color: 'bg-red-100 text-red-600',
-            perm: ['manage_inventory']
+            perm: ['manage_donors']
         },
         {
             id: 'announcements',
