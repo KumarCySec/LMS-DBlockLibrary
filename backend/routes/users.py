@@ -1,12 +1,93 @@
 from flask import Blueprint, request, jsonify
 from extensions import db
-from models import User, Role, Transaction
+from models import User, Role, Transaction, Department
 from datetime import datetime
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from functools import wraps
 from utils.decorators import role_required, permission_required
 
 users_bp = Blueprint('users', __name__)
+
+
+DEPT_MAP = {
+    'ECE': 'Electronics and Communication Engineering',
+    'EEE': 'Electricals and Electronics Engineering',
+    'IMT': 'Information Technology',
+    'MCE': 'Mechanical Engineering',
+    'CVL': 'Civil Engineering',
+    'CSE': 'Computer Science and Engineering',
+    'CDS': 'CS (Data Science)',
+    'ATE': 'Automobile Engineering',
+    'MEC': 'M.E. CSE',
+    'MES': 'M.E. Structural Engineering'
+}
+
+def auto_heal_user(user, dept_cache=None):
+    """
+    Attempts to fix missing user data (Batch, Dept, Joined Date) from Roll Number.
+    Returns True if any change was made.
+    """
+    changed = False
+    if dept_cache is None:
+        dept_cache = {}
+    
+    # 1. Heal Batch & Department from Roll No (e.g. 23ECE101)
+    if (not user.department_id or not user.batch) and user.roll_number:
+        import re
+        roll_clean = user.roll_number.strip().upper()
+        # Regex: Start with 2 digits (Batch specific part), then LETTERS (Dept), then digits
+        match = re.search(r'^(\d+)([A-Z]+)\d+$', roll_clean)
+        
+        if match:
+            batch_prefix = match.group(1) # e.g. 23
+            dept_code = match.group(2)    # e.g. ECE
+            
+            # Heal Batch
+            if not user.batch:
+                # Assuming 2xxx prefix. If '23', it's 2023.
+                user.batch = f"20{batch_prefix}"
+                changed = True
+                
+            # Heal Department
+            if not user.department_id:
+                # Check cache first
+                dept = dept_cache.get(dept_code)
+                
+                # Check DB if not in cache
+                if not dept:
+                    dept = Department.query.filter_by(name=dept_code).first()
+
+                if not dept:
+                    # Check if it's a known department code
+                    full_name = DEPT_MAP.get(dept_code)
+                    
+                    if full_name:
+                        dept = Department(name=dept_code, description=full_name)
+                        db.session.add(dept)
+                        db.session.flush()
+                        dept_cache[dept_code] = dept
+                    # Auto-create Department if valid 2-4 letter code (fallback)
+                    elif 2 <= len(dept_code) <= 4:
+                        dept = Department(name=dept_code, description=f"Department of {dept_code}")
+                        db.session.add(dept)
+                        db.session.flush() # Get ID
+                        dept_cache[dept_code] = dept
+                
+                if dept:
+                    user.department_id = dept.id
+                    changed = True
+
+    # 2. Heal Joined Date (created_at)
+    if not user.created_at and user.batch:
+        try:
+            # Assume joined Sept 1st of Batch Year
+            year = int(user.batch)
+            user.created_at = datetime(year, 9, 1)
+            changed = True
+        except:
+            pass
+
+    return changed
 
 @users_bp.route('/', methods=['GET'])
 @jwt_required()
@@ -43,6 +124,20 @@ def list_users():
             
         users = query.all()
         
+        # Auto-heal all fetched users
+        any_healed = False
+        dept_cache = {}
+        for user in users:
+            if auto_heal_user(user, dept_cache):
+                any_healed = True
+        
+        if any_healed:
+            try:
+                db.session.commit()
+            except:
+                db.session.rollback()
+        
+        # Serialization loop
         result = []
         for user in users:
             try:
@@ -62,7 +157,8 @@ def list_users():
                     "role": role_name,
                     "department_id": user.department_id,
                     "department_name": user.department.name if user.department else None,
-                    "batch": user.batch
+                    "batch": user.batch,
+                    "joined_at": user.created_at.strftime('%d-%m-%Y') if user.created_at else "N/A"
                 })
             except:
                 continue
@@ -71,12 +167,24 @@ def list_users():
     except Exception as e:
         return jsonify({"error": "Failed to fetch users", "details": str(e)}), 500
 
+# ... update_user ...
+
 @users_bp.route('/<int:user_id>', methods=['GET'])
 @jwt_required()
 @permission_required('manage_users')
 def get_user_detail(user_id):
     try:
         user = User.query.get_or_404(user_id)
+        
+        # Auto-heal
+        if auto_heal_user(user):
+            try:
+                db.session.commit()
+            except:
+                db.session.rollback()
+        
+        # Fetch active checkouts
+        # ... (rest of function)
         
         # Fetch active checkouts
         current_checkouts = []

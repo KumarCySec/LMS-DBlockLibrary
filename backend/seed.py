@@ -51,11 +51,22 @@ def seed_data():
     # Student gets none by default (read-only access handled by logic)
 
     # 4. Departments
-    departments = ['CS-DS', 'CSE', 'ECE', 'EEE', 'CIVIL', 'AUTO', 'MECH', 'IT']
-    for d_name in departments:
-        dept = Department.query.filter_by(name=d_name).first()
+    departments = {
+        'ECE': 'Electronics and Communication Engineering',
+        'EEE': 'Electricals and Electronics Engineering',
+        'IMT': 'Information Technology',
+        'MCE': 'Mechanical Engineering',
+        'CVL': 'Civil Engineering',
+        'CSE': 'Computer Science and Engineering',
+        'CDS': 'Computer Science and Engineering (Data Science)',
+        'ATE': 'Automobile Engineering',
+        'MEC': 'M.E. Computer Science and Engineering',
+        'MES': 'M.E. Structural Engineering'
+    }
+    for code, desc in departments.items():
+        dept = Department.query.filter_by(name=code).first()
         if not dept:
-            dept = Department(name=d_name)
+            dept = Department(name=code, description=desc)
             db.session.add(dept)
     
     # 5. Settings
