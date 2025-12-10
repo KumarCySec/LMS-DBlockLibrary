@@ -268,7 +268,7 @@ const Profile = () => {
                     >
                         <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 animate-pulse" />
                         <span className="text-[10px] font-bold text-gray-600 group-hover:text-indigo-600 uppercase tracking-wider">
-                            Designed by Developer
+                            About Developer
                         </span>
                     </button>
                 </div>
@@ -344,8 +344,8 @@ const Profile = () => {
                             <div className="bg-white/40 backdrop-blur-md rounded-2xl p-5 mb-8 border border-white/50 shadow-lg relative group overflow-hidden">
                                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/40 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 pointer-events-none" />
                                 <p className="text-gray-700 text-xs leading-relaxed font-medium">
-                                    "Crafting digital experiences with a blend of creativity and code.
-                                    Obsessed with clean architecture and making things look <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 font-black">Super Duper</span>."
+                                    "Built with logic, bugs, fixes… and a little madness.
+                                    Heartfelt thanks to <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 font-black">Velmani</span> Anna (ECE’92) & <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 font-black">Bala Subramaniam</span> Anna (ECE’99) for trusting me to to digitize this library."
                                 </p>
                             </div>
 
@@ -364,7 +364,7 @@ const Profile = () => {
                                 <Button
                                     variant="outline"
                                     className="flex-1 border-white/60 bg-white/60 hover:bg-white text-gray-800 py-6 rounded-2xl transition-all text-sm font-bold shadow-sm hover:shadow-md backdrop-blur-sm active:scale-95"
-                                    onClick={() => window.location.href = 'mailto:kishore@example.com'}
+                                    onClick={() => window.location.href = 'mailto:kishorekumargcee@gmail.com'}
                                 >
                                     <Mail className="w-5 h-5 mr-2" /> Email
                                 </Button>

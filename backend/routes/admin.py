@@ -127,6 +127,49 @@ def list_roles():
 @jwt_required()
 @permission_required('manage_roles')
 def list_permissions():
+    # Define Source of Truth for Permissions
+    MASTER_PERMISSIONS = [
+        # Dashboard & Ops
+        {"name": "update_library_status", "description": "Open/Close library and set status"},
+        {"name": "view_analytics", "description": "View stats and logs"},
+        {"name": "manage_roster", "description": "Manage duty roster"},
+        
+        # Inventory
+        {"name": "manage_inventory", "description": "Add, edit, delete items"},
+        {"name": "import_data", "description": "Import inventory from CSV"},
+        {"name": "manage_donors", "description": "Manage donors"},
+        
+        # Circulation
+        {"name": "approve_checkout", "description": "Approve item issuance"},
+        {"name": "approve_return", "description": "Approve item returns"},
+        {"name": "approve_renew", "description": "Approve renewals"},
+        {"name": "staff_checkout", "description": "Self-checkout for staff"},
+        
+        # Users
+        {"name": "approve_users", "description": "Approve new user signups"},
+        {"name": "manage_users", "description": "Edit/Block users"},
+        {"name": "manage_roles", "description": "Configure roles and permissions"},
+        {"name": "manage_departments", "description": "Manage departments"},
+        
+        # System
+        {"name": "manage_settings", "description": "System settings"},
+        {"name": "manage_system_reset", "description": "Database reset actions"}
+    ]
+
+    # Self-Healing: Check and create missing permissions
+    existing_perms = {p.name for p in Permission.query.all()}
+    added_new = False
+    
+    for p_def in MASTER_PERMISSIONS:
+        if p_def['name'] not in existing_perms:
+            new_perm = Permission(name=p_def['name'], description=p_def['description'])
+            db.session.add(new_perm)
+            added_new = True
+            
+    if added_new:
+        db.session.commit()
+
+    # Return all
     perms = Permission.query.all()
     return jsonify([{"id": p.id, "name": p.name} for p in perms]), 200
 
