@@ -8,49 +8,39 @@ import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 
 const Profile = () => {
-    const { user, logout, checkAuth } = useAuth();
+    const { user, logout, refreshProfile } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(false);
     const [showDevCard, setShowDevCard] = useState(false);
-
-    const [profileData, setProfileData] = useState(null);
-    const [stats, setStats] = useState(null);
-    const [history, setHistory] = useState([]);
 
     const [formData, setFormData] = useState({
         phone_number: '',
         email: ''
     });
 
+    // Initial Load & Sync
     useEffect(() => {
-        const loadData = async () => {
-            await checkAuth(); // Refresh basic user data
-            fetchProfileDetails();
+        const init = async () => {
+            await refreshProfile(true);
         };
-        loadData();
+        init();
     }, []);
 
-    const fetchProfileDetails = async () => {
-        try {
-            const res = await api.get('/auth/me');
-            setProfileData(res.data);
-            setStats(res.data.stats);
-            setHistory(res.data.history || []);
+    // Update form data when user context updates
+    useEffect(() => {
+        if (user) {
             setFormData({
-                phone_number: res.data.phone_number || '',
-                email: res.data.email || ''
+                phone_number: user.phone_number || '',
+                email: user.email || ''
             });
-        } catch (error) {
-            console.error("Failed to load profile details", error);
         }
-    };
+    }, [user]);
 
     const handleSave = async () => {
         setLoading(true);
         try {
             await api.put('/auth/me', formData);
-            await checkAuth(); // Refresh context
-            await fetchProfileDetails(); // Refresh local data
+            await refreshProfile(); // Single source of truth update
             setIsEditing(false);
         } catch (error) {
             console.error("Failed to update profile", error);
@@ -181,26 +171,26 @@ const Profile = () => {
                 </div>
 
                 {/* 2. Stats Grid - Side-by-side on mobile */}
-                {stats && (
+                {user.stats && (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         <StatCard
                             icon={Book}
                             label="Books Mastered"
-                            value={stats.books_read}
+                            value={user.stats.books_read}
                             subtext="completed"
                             colorClass="text-emerald-600"
                         />
                         <StatCard
                             icon={Clock}
                             label="Current Loans"
-                            value={stats.current_borrowings}
+                            value={user.stats.current_borrowings}
                             subtext="active items"
                             colorClass="text-amber-600"
                         />
                         <StatCard
                             icon={Sparkles}
                             label="Knowledge Streak"
-                            value={stats.total_days_reading}
+                            value={user.stats.total_days_reading}
                             subtext="days active"
                             colorClass="text-purple-600"
                         />
@@ -213,12 +203,12 @@ const Profile = () => {
                         <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                             <History className="w-4 h-4 text-indigo-600" /> Recent Activity
                         </h2>
-                        {history.length > 0 && <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{history.length} Records</span>}
+                        {user.history?.length > 0 && <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{user.history.length} Records</span>}
                     </div>
 
-                    {history.length > 0 ? (
+                    {user.history?.length > 0 ? (
                         <div className="flex overflow-x-auto pb-4 gap-3 snap-x snap-mandatory md:grid md:grid-cols-2 md:overflow-visible">
-                            {history.map((tx) => (
+                            {user.history.map((tx) => (
                                 <div key={tx.id} className="min-w-[280px] md:min-w-0 flex-shrink-0 snap-center bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group relative overflow-hidden">
                                     {/* Decorative gradient blob */}
                                     <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-bl-full -z-0 group-hover:scale-110 transition-transform" />
@@ -345,7 +335,7 @@ const Profile = () => {
                                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/40 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 pointer-events-none" />
                                 <p className="text-gray-700 text-xs leading-relaxed font-medium">
                                     "Built with logic, bugs, fixes… and a little madness.
-                                    Heartfelt thanks to <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 font-black">Velmani</span> Anna (ECE’92) & <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 font-black">Bala Subramaniam</span> Anna (ECE’99) for trusting me to to digitize this library."
+                                    Heartfelt thanks to <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 font-black">Velmani</span> Anna (ECE’92) & <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 font-black">Bala Subramaniam</span> Anna (ECE’99) for trusting me to digitize this library."
                                 </p>
                             </div>
 

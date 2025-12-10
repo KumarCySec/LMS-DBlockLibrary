@@ -8,8 +8,8 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const refreshProfile = async () => {
-        setLoading(true);
+    const refreshProfile = async (silent = false) => {
+        if (!silent) setLoading(true);
         setError(null);
         try {
             const response = await api.get('/auth/me');
@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }) => {
                 setError("Could not load profile. Please check your connection.");
             }
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
