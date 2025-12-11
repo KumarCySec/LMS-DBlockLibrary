@@ -320,7 +320,7 @@ const UserDetail = () => {
                                                 )}
                                             </p>
                                             <p className="text-[10px] text-gray-500 font-medium mt-0.5">
-                                                {user.verified_at ? format(new Date(user.verified_at.endsWith('Z') ? user.verified_at : user.verified_at + 'Z'), "dd-MM-yyyy • HH:mm a") : ''}
+                                                {user.verified_at ? format(new Date(user.verified_at.endsWith('Z') ? user.verified_at : user.verified_at + 'Z'), "dd-MM-yyyy • hh:mm a") : ''}
                                             </p>
                                         </div>
                                     </div>
