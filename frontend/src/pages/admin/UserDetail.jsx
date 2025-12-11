@@ -256,7 +256,7 @@ const UserDetail = () => {
                                     <div className="flex-1 min-w-0">
                                         <p className="text-[10px] text-gray-400 font-bold uppercase">Email</p>
                                         {isEditing ? (
-                                            <input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="w-full text-sm p-1 border rounded" />
+                                            <input name="email" autoComplete="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="w-full text-sm p-1 border rounded" />
                                         ) : (
                                             <p className="text-sm font-bold text-gray-800 truncate">{user.email}</p>
                                         )}
@@ -267,7 +267,13 @@ const UserDetail = () => {
                                     <div className="flex-1">
                                         <p className="text-[10px] text-gray-400 font-bold uppercase">Phone</p>
                                         {isEditing ? (
-                                            <input value={editForm.phone_number} onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })} className="w-full text-sm p-1 border rounded" />
+                                            <input
+                                                name="phone"
+                                                autoComplete="tel"
+                                                value={editForm.phone_number}
+                                                onChange={(e) => setEditForm({ ...editForm, phone_number: e.target.value })}
+                                                className="w-full text-sm p-1 border rounded"
+                                            />
                                         ) : (
                                             <p className="text-sm font-bold text-gray-800">{user.phone_number || 'N/A'}</p>
                                         )}
@@ -288,7 +294,13 @@ const UserDetail = () => {
                                     <div className="p-4 pl-6">
                                         <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Batch</p>
                                         {isEditing ? (
-                                            <input value={editForm.batch} onChange={(e) => setEditForm({ ...editForm, batch: e.target.value })} className="w-full text-sm p-1 border rounded" />
+                                            <input
+                                                name="batch"
+                                                autoComplete="off"
+                                                value={editForm.batch}
+                                                onChange={(e) => setEditForm({ ...editForm, batch: e.target.value })}
+                                                className="w-full text-sm p-1 border rounded"
+                                            />
                                         ) : (
                                             <p className="text-sm font-bold text-gray-800">{user.batch || 'N/A'}</p>
                                         )}
@@ -299,11 +311,16 @@ const UserDetail = () => {
                                         <div className="p-2 bg-violet-50 text-violet-600 rounded-lg"><Shield className="w-4 h-4" /></div>
                                         <div>
                                             <p className="text-[10px] text-gray-400 font-bold uppercase">Verified By</p>
-                                            <p className="text-sm font-bold text-gray-800">
+                                            <p className="text-sm font-bold text-gray-800 flex items-center">
                                                 {user.verified_by.name}
+                                                {user.verified_by.role && (
+                                                    <span className="ml-2 px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold uppercase border border-gray-200 tracking-wider">
+                                                        {user.verified_by.role}
+                                                    </span>
+                                                )}
                                             </p>
                                             <p className="text-[10px] text-gray-500 font-medium mt-0.5">
-                                                {user.verified_at ? format(new Date(user.verified_at), "dd-MM-yyyy • HH:mm 'IST'") : ''}
+                                                {user.verified_at ? format(new Date(user.verified_at.endsWith('Z') ? user.verified_at : user.verified_at + 'Z'), "dd-MM-yyyy • HH:mm a") : ''}
                                             </p>
                                         </div>
                                     </div>

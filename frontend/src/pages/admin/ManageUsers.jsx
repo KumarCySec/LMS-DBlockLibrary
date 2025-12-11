@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card, CardContent } from '../../components/ui/Card';
-import { Check, X, Search, Filter, RefreshCw, Download } from 'lucide-react';
+import { Check, X, Search, Filter, RefreshCw, Download, Users, GraduationCap, Key, Shield } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { saveAs } from 'file-saver';
 import { format } from 'date-fns';
@@ -20,6 +20,7 @@ const ManageUsers = () => {
     const [deptFilter, setDeptFilter] = useState('');
     const [batchFilter, setBatchFilter] = useState('');
     const [departments, setDepartments] = useState([]);
+    const [stats, setStats] = useState({});
 
     // Role Management State
     const [showRoleModal, setShowRoleModal] = useState(false);
@@ -36,11 +37,21 @@ const ManageUsers = () => {
 
     useEffect(() => {
         fetchDepartments();
+        fetchStats();
     }, []);
 
     useEffect(() => {
         fetchUsers();
     }, [filter, debouncedSearch, roleFilter, deptFilter, batchFilter]);
+
+    const fetchStats = async () => {
+        try {
+            const res = await api.get('/users/stats');
+            setStats(res.data);
+        } catch (e) {
+            console.error("Failed to fetch stats", e);
+        }
+    };
 
     const fetchDepartments = async () => {
         try {
@@ -159,6 +170,56 @@ const ManageUsers = () => {
                         <Button variant="ghost" size="sm" onClick={clearFilters} className="text-gray-500 hover:text-indigo-600">
                             Clear Filters
                         </Button>
+                    </div>
+                </div>
+
+                {/* Stats Grid */}
+                {/* Stats Grid - Horizontal Scroll on Mobile */}
+                <div className="flex overflow-x-auto pb-2 gap-3 snap-x snap-mandatory lg:grid lg:grid-cols-5 lg:pb-0">
+                    <div className="min-w-[140px] flex-shrink-0 snap-start bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">Total Users</p>
+                            <p className="text-xl sm:text-2xl font-black text-gray-900 mt-1">{stats.total || 0}</p>
+                        </div>
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400">
+                            <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+                        </div>
+                    </div>
+                    <div className="min-w-[140px] flex-shrink-0 snap-start bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p className="text-[10px] sm:text-xs font-bold text-indigo-400 uppercase tracking-wider">Students</p>
+                            <p className="text-xl sm:text-2xl font-black text-indigo-900 mt-1">{stats.students || 0}</p>
+                        </div>
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500">
+                            <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />
+                        </div>
+                    </div>
+                    <div className="min-w-[140px] flex-shrink-0 snap-start bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p className="text-[10px] sm:text-xs font-bold text-emerald-500 uppercase tracking-wider">Volunteers</p>
+                            <p className="text-xl sm:text-2xl font-black text-emerald-900 mt-1">{stats.volunteers || 0}</p>
+                        </div>
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                            <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
+                        </div>
+                    </div>
+                    <div className="min-w-[140px] flex-shrink-0 snap-start bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p className="text-[10px] sm:text-xs font-bold text-amber-500 uppercase tracking-wider">Incharge</p>
+                            <p className="text-xl sm:text-2xl font-black text-amber-900 mt-1">{stats.incharge || 0}</p>
+                        </div>
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
+                            <Key className="w-4 h-4 sm:w-5 sm:h-5" />
+                        </div>
+                    </div>
+                    <div className="min-w-[140px] flex-shrink-0 snap-start bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p className="text-[10px] sm:text-xs font-bold text-rose-500 uppercase tracking-wider">Admin</p>
+                            <p className="text-xl sm:text-2xl font-black text-rose-900 mt-1">{stats.admins || 0}</p>
+                        </div>
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
+                            <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
+                        </div>
                     </div>
                 </div>
 

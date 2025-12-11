@@ -167,7 +167,34 @@ def list_users():
     except Exception as e:
         return jsonify({"error": "Failed to fetch users", "details": str(e)}), 500
 
-# ... update_user ...
+@users_bp.route('/stats', methods=['GET'])
+@jwt_required()
+@permission_required('manage_users')
+def get_user_stats():
+    try:
+        total_users = User.query.count()
+        
+        # Count Specific Higher Roles
+        admins = User.query.join(User.roles).filter(Role.name == 'Admin').count()
+        incharges = User.query.join(User.roles).filter(Role.name == 'Incharge').count()
+        volunteers = User.query.join(User.roles).filter(Role.name == 'Volunteer').count()
+        
+        # Count Pure Students (Users who DO NOT have any higher role)
+        # This prevents the "Total 22, Student 22, Admin 3" logic error
+        students = User.query.filter(~User.roles.any(Role.name.in_(['Admin', 'Incharge', 'Volunteer']))).count()
+        
+        counts = {
+            "total": total_users,
+            "students": students,
+            "volunteers": volunteers,
+            "incharge": incharges,
+            "admins": admins
+        }
+        
+        return jsonify(counts), 200
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch stats"}), 500
+
 
 @users_bp.route('/<int:user_id>', methods=['GET'])
 @jwt_required()
@@ -237,7 +264,8 @@ def get_user_detail(user_id):
             if user.approved_by_id:
                 approver = User.query.get(user.approved_by_id)
                 if approver:
-                    verified_by = {"id": approver.id, "name": approver.name, "role": "Admin"}
+                    approver_role = approver.roles[0].name if approver.roles else 'Admin'
+                    verified_by = {"id": approver.id, "name": approver.name, "role": approver_role}
         except:
             pass
 
@@ -267,6 +295,46 @@ def get_user_detail(user_id):
         }), 200
     except Exception as e:
         return jsonify({"error": "Failed to fetch user details", "details": str(e)}), 500
+@users_bp.route('/<int:user_id>', methods=['PUT'])
+@jwt_required()
+@permission_required('manage_users')
+def update_user_detail(user_id):
+    try:
+        user = User.query.get_or_404(user_id)
+        data = request.get_json()
+        
+        # 1. Update Basic Fields
+        if 'name' in data:
+            user.name = data['name']
+        if 'phone_number' in data:
+            user.phone_number = data['phone_number']
+        if 'batch' in data:
+            user.batch = data['batch']
+        if 'department_id' in data:
+            if data['department_id']:
+                user.department_id = data['department_id']
+                
+        # 2. Update Roll Number (Unique Check)
+        if 'roll_number' in data and data['roll_number'] != user.roll_number:
+            existing = User.query.filter_by(roll_number=data['roll_number']).first()
+            if existing:
+                return jsonify({"error": "Roll Number already exists"}), 400
+            user.roll_number = data['roll_number']
+
+        # 3. Update Email (Unique Check)
+        if 'email' in data and data['email'] != user.email:
+            existing = User.query.filter_by(email=data['email']).first()
+            if existing:
+                return jsonify({"error": "Email already exists"}), 400
+            user.email = data['email']
+
+        db.session.commit()
+        return jsonify({"message": "User updated successfully"}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to update user", "details": str(e)}), 500
+
 @users_bp.route('/<int:user_id>/approve', methods=['POST'])
 @jwt_required()
 @permission_required('approve_users')
