@@ -34,7 +34,10 @@ const Modal = ({ isOpen, onClose, title, children, footer }) => {
     );
 };
 
+import { useToast } from '../../context/ToastContext';
+
 const ManageTransactions = () => {
+    const { toast } = useToast();
     const [transactions, setTransactions] = useState([]);
     const [filteredTransactions, setFilteredTransactions] = useState([]);
     const [searchParams, setSearchParams] = useSearchParams();
@@ -58,7 +61,7 @@ const ManageTransactions = () => {
             setShowExportModal(false);
         } catch (error) {
             console.error("Master Export failed", error);
-            alert("Export failed");
+            toast.error("Export failed");
         }
     };
 
@@ -125,9 +128,10 @@ const ManageTransactions = () => {
             setShowDetailModal(false);
             setShowRejectModal(false);
             fetchTransactions();
+            toast.success(`Transaction ${action}ed successfully`);
         } catch (error) {
             console.error(`Failed to ${action}`, error);
-            alert(`Failed to ${action}: ` + (error.response?.data?.error || error.message));
+            toast.error(`Failed to ${action}: ` + (error.response?.data?.error || error.message));
         } finally {
             setActionLoading(false);
         }
@@ -139,9 +143,10 @@ const ManageTransactions = () => {
             await api.post(`/transactions/${id}/approve-return`, {});
             setShowDetailModal(false);
             fetchTransactions();
+            toast.success("Return processed successfully");
         } catch (error) {
             console.error("Failed to return", error);
-            alert("Failed to return: " + (error.response?.data?.error || error.message));
+            toast.error("Failed to return: " + (error.response?.data?.error || error.message));
         } finally {
             setActionLoading(false);
         }
@@ -262,20 +267,32 @@ const ManageTransactions = () => {
 
             {/* Filters */}
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                {['ALL', 'REQUESTED', 'ISSUED', 'OVERDUE', 'RETURN_REQUESTED', 'RETURNED', 'REJECTED'].map(f => (
-                    <button
-                        key={f}
-                        onClick={() => setFilter(f)}
-                        className={cn(
-                            "px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border",
-                            filter === f
-                                ? "bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105"
-                                : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-                        )}
-                    >
-                        {f.replace('_', ' ')}
-                    </button>
-                ))}
+                {['ALL', 'REQUESTED', 'ISSUED', 'OVERDUE', 'RETURN_REQUESTED', 'RETURNED', 'REJECTED'].map(f => {
+                    const labelMap = {
+                        'ALL': 'All',
+                        'REQUESTED': 'Checkout Requests',
+                        'ISSUED': 'Issued',
+                        'OVERDUE': 'Overdue',
+                        'RETURN_REQUESTED': 'Return Requests',
+                        'RETURNED': 'Returned',
+                        'REJECTED': 'Rejected',
+                        'RENEW_REQUESTED': 'Renew Requests'
+                    };
+                    return (
+                        <button
+                            key={f}
+                            onClick={() => setFilter(f)}
+                            className={cn(
+                                "px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border",
+                                filter === f
+                                    ? "bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105"
+                                    : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+                            )}
+                        >
+                            {labelMap[f] || f.replace('_', ' ')}
+                        </button>
+                    );
+                })}
             </div>
 
             {/* Transactions List */}
@@ -341,10 +358,16 @@ const ManageTransactions = () => {
                                                     {tx.issue_date && (
                                                         <span className="flex items-center gap-1.5">
                                                             <Calendar className="w-3 h-3 text-gray-400" />
-                                                            {format(new Date(tx.issue_date), 'MMM d, yyyy')}
+                                                            {format(new Date(tx.issue_date), 'MMM d, yyyy h:mm a')}
                                                         </span>
                                                     )}
-                                                    {!tx.issue_date && <span className="text-gray-400 italic">Pending</span>}
+                                                    {!tx.issue_date && tx.created_at && (
+                                                        <span className="flex items-center gap-1.5 text-gray-500">
+                                                            <Calendar className="w-3 h-3 text-gray-400" />
+                                                            Req: {format(new Date(tx.created_at), 'MMM d, yyyy h:mm a')}
+                                                        </span>
+                                                    )}
+                                                    {!tx.issue_date && !tx.created_at && <span className="text-gray-400 italic">Pending</span>}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
@@ -390,7 +413,8 @@ const ManageTransactions = () => {
                                         <div className="flex items-center justify-between text-xs text-gray-500 pt-1">
                                             <div className="flex items-center gap-1.5">
                                                 <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                                                {tx.issue_date ? format(new Date(tx.issue_date), 'MMM d') : 'Pending'}
+                                                {tx.issue_date ? format(new Date(tx.issue_date), 'MMM d') :
+                                                    (tx.created_at ? 'Req: ' + format(new Date(tx.created_at), 'MMM d') : 'Pending')}
                                             </div>
                                             <ChevronRight className="w-4 h-4 text-gray-300" />
                                         </div>
@@ -511,7 +535,8 @@ const ManageTransactions = () => {
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Issued Date</p>
                                     <p className="font-medium text-gray-900">
-                                        {selectedTx.issue_date ? format(new Date(selectedTx.issue_date), 'MMM d, yyyy') : '-'}
+                                        {selectedTx.issue_date ? format(new Date(selectedTx.issue_date), 'MMM d, yyyy h:mm a') :
+                                            (selectedTx.created_at ? format(new Date(selectedTx.created_at), 'MMM d, yyyy h:mm a') + ' (Req)' : '-')}
                                     </p>
                                 </div>
                                 <div>
@@ -523,7 +548,7 @@ const ManageTransactions = () => {
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Returned Date</p>
                                     <p className="font-medium text-gray-900">
-                                        {selectedTx.return_date ? format(new Date(selectedTx.return_date), 'MMM d, yyyy') : '-'}
+                                        {selectedTx.return_date ? format(new Date(selectedTx.return_date), 'MMM d, yyyy h:mm a') : '-'}
                                     </p>
                                 </div>
                                 <div>

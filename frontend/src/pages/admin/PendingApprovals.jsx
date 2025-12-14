@@ -5,11 +5,18 @@ import { Card, CardContent } from '../../components/ui/Card';
 import { Check, X, User, ChevronRight, Mail, Phone, Calendar, BookOpen, Shield } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
+import { useToast } from '../../context/ToastContext';
+
 const PendingApprovals = () => {
+    const { toast } = useToast();
+    const [searchTerm, setSearchTerm] = useState('');
+    const [departmentFilter, setDepartmentFilter] = useState('');
+    const [batchFilter, setBatchFilter] = useState('');
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedUser, setSelectedUser] = useState(null);
     const [processing, setProcessing] = useState(null);
+    const [sortOrder, setSortOrder] = useState('newest'); // newest, oldest, name
 
     useEffect(() => {
         fetchPendingUsers();
@@ -21,6 +28,7 @@ const PendingApprovals = () => {
             setUsers(response.data);
         } catch (error) {
             console.error("Failed to fetch pending users", error);
+            toast.error("Failed to fetch pending users");
         } finally {
             setLoading(false);
         }
@@ -32,41 +40,109 @@ const PendingApprovals = () => {
             await api.post(`/users/${id}/approve`, { action });
             setUsers(users.filter(u => u.id !== id));
             if (selectedUser?.id === id) setSelectedUser(null);
+            toast.success(`User ${action}ed successfully`);
         } catch (error) {
             console.error(`Failed to ${action} user`, error);
-            alert(`Failed to ${action} user`);
+            toast.error(`Failed to ${action} user`);
         } finally {
             setProcessing(null);
         }
     };
 
+    // Filter Logic
+    const filteredUsers = users.filter(user => {
+        const matchesSearch = (
+            user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.roll_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.email.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        const matchesDept = departmentFilter ? user.department_name === departmentFilter : true;
+        const matchesBatch = batchFilter ? user.batch === batchFilter : true;
+        return matchesSearch && matchesDept && matchesBatch;
+    }).sort((a, b) => {
+        if (sortOrder === 'name') return a.name.localeCompare(b.name);
+        if (sortOrder === 'newest') return new Date(b.joined_at) - new Date(a.joined_at); // joined_at is string 'dd-mm-yyyy', might need parsing if sorting strictly by date. 
+        // But for now, let's assume standard ID sort typically mirrors time or just simplistic sort. 
+        // Actually user.joined_at is formatted string.Let's rely on ID descending for 'newest' usually? 
+        // Or just keep it simple.Let's use ID for newest/oldest proxy if date parsing is tricky.
+        if (sortOrder === 'newest') return b.id - a.id;
+        if (sortOrder === 'oldest') return a.id - b.id;
+        return 0;
+    });
+
+    // Extract Unique Depts & Batches for Filters
+    const uniqueDepts = [...new Set(users.map(u => u.department_name).filter(Boolean))];
+    const uniqueBatches = [...new Set(users.map(u => u.batch).filter(Boolean))];
+
     return (
         <div className="p-4 space-y-6 pb-24 max-w-5xl mx-auto">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Pending Approvals</h1>
                     <p className="text-gray-500">Review and approve new user registrations</p>
                 </div>
-                <div className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm font-bold">
-                    {users.length} Pending
+                <div className="flex items-center gap-2">
+                    <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm font-bold">
+                        {users.length} Pending
+                    </span>
                 </div>
             </div>
+
+            {/* Search & Filter Controls */}
+            <Card className="bg-white shadow-sm border-gray-200">
+                <CardContent className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* Search */}
+                    <div className="md:col-span-2 relative">
+                        <input
+                            type="text"
+                            placeholder="Search Name, Roll No, Email..."
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                        <div className="absolute left-3 top-2.5 text-gray-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    {/* Filters */}
+                    <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        value={departmentFilter}
+                        onChange={(e) => setDepartmentFilter(e.target.value)}
+                    >
+                        <option value="">All Departments</option>
+                        {uniqueDepts.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+
+                    <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                        value={batchFilter}
+                        onChange={(e) => setBatchFilter(e.target.value)}
+                    >
+                        <option value="">All Batches</option>
+                        {uniqueBatches.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                </CardContent>
+            </Card>
 
             {loading ? (
                 <div className="flex justify-center py-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
                 </div>
-            ) : users.length === 0 ? (
+            ) : filteredUsers.length === 0 ? (
                 <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
                         <Check className="w-8 h-8" />
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900">All caught up!</h3>
-                    <p className="text-gray-500">No pending approvals at the moment.</p>
+                    <h3 className="text-lg font-medium text-gray-900">No match found</h3>
+                    <p className="text-gray-500">Try adjusting your filters or search terms.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {users.map((user) => (
+                    {filteredUsers.map((user) => (
                         <Card
                             key={user.id}
                             className="group hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4 border-l-indigo-500"

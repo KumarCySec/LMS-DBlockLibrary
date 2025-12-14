@@ -13,6 +13,7 @@ class Transaction(db.Model):
     rejected_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     processed_by_id = db.Column(db.Integer, db.ForeignKey('users.id')) # For returns/renewals
     processed_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     status = db.Column(db.String(20), default='REQUESTED') 
     # REQUESTED, APPROVED, ISSUED, RETURN_REQUESTED, RETURNED, RENEW_REQUESTED, OVERDUE, CANCELLED

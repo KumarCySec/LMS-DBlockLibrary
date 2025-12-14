@@ -2,7 +2,7 @@ from flask import Blueprint, request, send_file
 from extensions import db
 from models import InventoryItem, InventoryCopy, Donor, User, Role
 from flask_jwt_extended import jwt_required
-from utils.decorators import role_required
+from utils.decorators import role_required, permission_required
 import pandas as pd
 import io
 from datetime import datetime
@@ -67,7 +67,7 @@ def export_master_inventory():
         df = pd.DataFrame(data)
         
         output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name='Master Inventory')
             
         output.seek(0)
@@ -106,7 +106,7 @@ def export_inventory_summary():
         df = pd.DataFrame(data)
         
         output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name='Inventory Summary')
             
         output.seek(0)
@@ -122,9 +122,10 @@ def export_inventory_summary():
         traceback.print_exc()
         return jsonify({"error": "Export failed", "details": str(e)}), 500
 
+
 @inventory_export_bp.route('/users', methods=['GET'])
 @jwt_required()
-@role_required(['Admin'])
+@permission_required('manage_users')
 def export_users():
     try:
         status = request.args.get('status')
@@ -168,7 +169,7 @@ def export_users():
         df = pd.DataFrame(data)
         
         output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name='Users')
             
         output.seek(0)
@@ -218,7 +219,7 @@ def export_donors():
         df = pd.DataFrame(data)
         
         output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name='Donors')
             
         output.seek(0)
@@ -284,7 +285,7 @@ def export_transactions():
         df = pd.DataFrame(data)
         
         output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name='Master Register')
             
         output.seek(0)
@@ -334,7 +335,7 @@ def export_activity():
         df = pd.DataFrame(data)
         
         output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name='Activity Log')
             
         output.seek(0)
@@ -362,27 +363,43 @@ def export_volunteer_summary():
             AttendanceLog.user_id,
             db.func.count(AttendanceLog.id).label('shifts'),
             db.func.sum(AttendanceLog.duration_minutes).label('total_minutes')
-        ).group_by(AttendanceLog.user_id).all()
+        ).filter(AttendanceLog.status == 'APPROVED').group_by(AttendanceLog.user_id).all()
         
         data = []
         for row in query:
             user = User.query.get(row.user_id)
             if not user: continue
             
-            hours = round((row.total_minutes or 0) / 60, 2)
+            total_mins = row.total_minutes or 0
+            hours = total_mins / 60
+            
+            # Format Total Time
+            if hours < 0.5:
+                total_time_str = f"{int(total_mins)} min"
+            else:
+                total_time_str = f"{round(hours, 2)} hrs"
+
+            # Format Avg Shift
+            avg_mins = (total_mins / row.shifts) if row.shifts > 0 else 0
+            avg_hours = avg_mins / 60
+            
+            if avg_hours < 0.5:
+                avg_shift_str = f"{int(avg_mins)} min"
+            else:
+                avg_shift_str = f"{round(avg_hours, 2)} hrs"
             
             data.append({
                 "Volunteer Name": user.name,
                 "Major/Dept": user.department.name if user.department else "N/A",
                 "Batch": user.batch,
                 "Total Shifts": row.shifts,
-                "Total Hours": hours,
-                "Avg Shift (hrs)": round(hours / row.shifts, 2) if row.shifts > 0 else 0
+                "Total Time": total_time_str,
+                "Avg Shift Duration": avg_shift_str
             })
             
         df = pd.DataFrame(data)
         output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name='Volunteer Summary')
         output.seek(0)
         
@@ -418,12 +435,13 @@ def export_volunteer_detailed():
                 "Department": user.department.name if user.department else "",
                 "Check In": log.check_in_time.strftime('%H:%M:%S') if log.check_in_time else "",
                 "Check Out": log.check_out_time.strftime('%H:%M:%S') if log.check_out_time else "Active",
-                "Duration (mins)": log.duration_minutes or 0
+                "Duration (mins)": log.duration_minutes or 0,
+                "Status": log.status
             })
             
         df = pd.DataFrame(data)
         output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name='Detailed Attendance')
         output.seek(0)
         

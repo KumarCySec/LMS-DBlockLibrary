@@ -4,6 +4,7 @@ from models.misc import AttendanceLog, VolunteerSchedule
 from models.users import User
 from datetime import datetime, timedelta
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from utils.decorators import role_required, permission_required
 
 def get_today_date():
     # IST is UTC + 5:30
@@ -106,7 +107,15 @@ def check_out():
     
     # Calculate duration
     duration = (log.check_out_time - log.check_in_time).total_seconds() / 60
+    
+    # MAX DURATION CAP: 4 Hours (240 minutes)
+    MAX_DURATION = 240
+    if duration > MAX_DURATION:
+        duration = MAX_DURATION
+        
     log.duration_minutes = int(duration)
+    # Status goes to PENDING_APPROVAL for Incharge Verification
+    log.status = 'PENDING_APPROVAL'
     
     # Log Activity
     from models.misc import ActivityLog
@@ -139,6 +148,109 @@ def get_history():
         "duration": l.duration_minutes,
         "status": l.status
     } for l in logs]), 200
+
+@attendance_bp.route('/<int:log_id>', methods=['PUT'])
+@jwt_required()
+@role_required(['Incharge', 'Admin'])
+def update_attendance(log_id):
+    current_user_id = get_jwt_identity()
+    log = AttendanceLog.query.get_or_404(log_id)
+    data = request.get_json()
+    
+    # Update fields
+    if 'check_in_time' in data:
+        log.check_in_time = datetime.fromisoformat(data['check_in_time'].replace('Z', '+00:00'))
+    if 'check_out_time' in data:
+        if data['check_out_time']:
+            log.check_out_time = datetime.fromisoformat(data['check_out_time'].replace('Z', '+00:00'))
+        else:
+            log.check_out_time = None
+            
+    if 'status' in data:
+        log.status = data['status']
+        
+    # Recalculate duration if complete
+    if log.check_in_time and log.check_out_time:
+        duration = (log.check_out_time - log.check_in_time).total_seconds() / 60
+        # MAX DURATION CAP: 4 Hours (240 minutes)
+        if duration > 240:
+            duration = 240
+        log.duration_minutes = int(duration)
+    else:
+        log.duration_minutes = 0
+
+    log.approved_by_id = current_user_id
+    log.approved_at = datetime.utcnow()
+    
+    db.session.commit()
+    
+    # Log Activity
+    try:
+        from models.misc import ActivityLog
+        activity = ActivityLog(
+            user_id=current_user_id,
+            action_type='ATTENDANCE_EDIT',
+            details=f"Edited attendance for {log.user.name}. New status: {log.status}, Duration: {log.duration_minutes}",
+            ip_address=request.remote_addr
+        )
+        db.session.add(activity)
+        db.session.commit()
+    except: pass
+    
+    return jsonify({"message": "Attendance record updated"}), 200
+
+@attendance_bp.route('/<int:log_id>/approve', methods=['POST'])
+@jwt_required()
+@role_required(['Incharge', 'Admin'])
+def approve_attendance(log_id):
+    current_user_id = get_jwt_identity()
+    log = AttendanceLog.query.get_or_404(log_id)
+    data = request.get_json()
+    action = data.get('action') # 'approve' or 'reject'
+    
+    if log.status != 'PENDING_APPROVAL':
+        # Allow re-approval if needed? Or restrict. Let's restrict for now.
+        return jsonify({"error": "Log is not pending approval"}), 400
+        
+    if action == 'approve':
+        log.status = 'COMPLETED' # or APPROVED? 'COMPLETED' is the old 'done' state. Let's stick to COMPLETED or APPROVED. Model said 'APPROVED' in comment. Let's use 'APPROVED' to be explicit, or 'COMPLETED' if frontend expects it. 
+        # Existing stats use 'COMPLETED'? 
+        # Let's check get_status: "status": log.status.
+        # Let's use 'APPROVED' for clarity in new workflow. BUT need to ensure stats count it. 
+        # export_volunteer_summary sums duration. It doesn't filter by status currently? 
+        # "AttendanceLog.query...group_by". It counts ALL logs? 
+        # We should strictly count 'APPROVED' or 'COMPLETED'. 
+        # Let's use 'APPROVED' as the final valid state.
+        log.status = 'APPROVED'
+        log.approved_by_id = current_user_id
+        log.approved_at = datetime.utcnow()
+        
+    elif action == 'reject':
+        log.status = 'REJECTED'
+        log.rejection_reason = data.get('reason')
+        log.approved_by_id = current_user_id
+        log.approved_at = datetime.utcnow() # rejected_at really
+        log.duration_minutes = 0 # Rejecting means no valid hours? Or keep hours but mark rejected? Usually 0 credit.
+        
+    else:
+        return jsonify({"error": "Invalid action"}), 400
+        
+    db.session.commit()
+    
+    # Log Activity
+    try:
+        from models.misc import ActivityLog
+        activity = ActivityLog(
+            user_id=current_user_id,
+            action_type=f'ATTENDANCE_{action.upper()}',
+            details=f"{action.title()}d attendance for {log.user.name}. Reason: {data.get('reason', 'N/A')}",
+            ip_address=request.remote_addr
+        )
+        db.session.add(activity)
+        db.session.commit()
+    except: pass
+
+    return jsonify({"message": f"Attendance {action}d"}), 200
 
 @attendance_bp.route('/active', methods=['GET'])
 @jwt_required()

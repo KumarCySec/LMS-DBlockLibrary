@@ -91,7 +91,7 @@ def auto_heal_user(user, dept_cache=None):
 
 @users_bp.route('/', methods=['GET'])
 @jwt_required()
-@permission_required('manage_users')
+@permission_required(['manage_users', 'approve_users'])
 def list_users():
     try:
         status = request.args.get('status')
@@ -198,7 +198,7 @@ def get_user_stats():
 
 @users_bp.route('/<int:user_id>', methods=['GET'])
 @jwt_required()
-@permission_required('manage_users')
+@permission_required(['manage_users', 'approve_users'])
 def get_user_detail(user_id):
     try:
         user = User.query.get_or_404(user_id)

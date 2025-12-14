@@ -8,6 +8,7 @@ import { Check, X, RefreshCw, Eye, User, Book, Calendar, AlertCircle, Clock } fr
 import { cn } from '../../lib/utils';
 import { format } from 'date-fns';
 import BottomSheet from '../../components/ui/BottomSheet'; // Assuming we have this or can use a Modal
+import { useToast } from '../../context/ToastContext';
 
 // Simple Modal Component if BottomSheet isn't suitable for desktop
 const Modal = ({ isOpen, onClose, title, children, footer }) => {
@@ -35,6 +36,7 @@ const Modal = ({ isOpen, onClose, title, children, footer }) => {
 };
 
 const TransactionApprovals = () => {
+    const toast = useToast();
     const { hasPermission } = useAuth();
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -63,6 +65,7 @@ const TransactionApprovals = () => {
             setRequests(response.data);
         } catch (error) {
             console.error("Failed to fetch requests", error);
+            toast.error("Failed to load requests: " + (error.response?.data?.error || error.message));
         } finally {
             setLoading(false);
         }
@@ -88,11 +91,12 @@ const TransactionApprovals = () => {
             setShowDetailModal(false);
             setShowRejectModal(false);
             setRequests(prev => prev.filter(r => r.id !== id));
+            toast.success(`Transaction ${action}ed successfully`);
 
             // Optional: Show success toast
         } catch (error) {
             console.error(`Failed to ${action}`, error);
-            alert(`Failed to ${action}: ` + (error.response?.data?.error || error.message));
+            toast.error(`Failed to ${action}: ` + (error.response?.data?.error || error.message));
         } finally {
             setActionLoading(false);
         }
@@ -104,9 +108,10 @@ const TransactionApprovals = () => {
             await api.post(`/transactions/${id}/approve-return`, {});
             setShowDetailModal(false);
             setRequests(prev => prev.filter(r => r.id !== id));
+            toast.success("Return processed successfully");
         } catch (error) {
             console.error("Failed to return", error);
-            alert("Failed to return: " + (error.response?.data?.error || error.message));
+            toast.error("Failed to return: " + (error.response?.data?.error || error.message));
         } finally {
             setActionLoading(false);
         }
@@ -304,11 +309,15 @@ const TransactionApprovals = () => {
                     <div className="space-y-6">
                         {/* Item Info */}
                         <div className="flex gap-4">
-                            <div className="w-20 h-28 bg-gray-200 rounded-lg flex-shrink-0 flex items-center justify-center text-gray-400">
-                                <Book className="w-8 h-8" />
-                            </div>
+                            <Link to={`/catalog/${selectedTx.inventory_item_id}`} className="shrink-0">
+                                <div className="w-20 h-28 bg-gray-200 rounded-lg flex-shrink-0 flex items-center justify-center text-gray-400 hover:opacity-80 transition-opacity">
+                                    <Book className="w-8 h-8" />
+                                </div>
+                            </Link>
                             <div>
-                                <h4 className="font-bold text-gray-900 text-lg leading-tight mb-1">{selectedTx.item_title}</h4>
+                                <Link to={`/catalog/${selectedTx.inventory_item_id}`} className="hover:underline">
+                                    <h4 className="font-bold text-gray-900 text-lg leading-tight mb-1">{selectedTx.item_title}</h4>
+                                </Link>
                                 <div className="flex flex-wrap gap-2 mb-2">
                                     <span className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-600">{selectedTx.item_type}</span>
                                     <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-mono">{selectedTx.copy_acc_no}</span>
@@ -322,20 +331,22 @@ const TransactionApprovals = () => {
                         {/* User Info */}
                         <div>
                             <h5 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Borrower Details</h5>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-gray-50 p-3 rounded-lg">
-                                    <p className="text-xs text-gray-400 mb-1">Name</p>
-                                    <p className="font-medium text-gray-900">{selectedTx.borrower_name}</p>
+                            <Link to={`/admin/users/${selectedTx.borrower_id}`} className="block hover:bg-gray-50 p-2 -m-2 rounded-lg transition-colors">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-gray-50 p-3 rounded-lg group-hover:bg-white transition-colors border border-transparent group-hover:border-gray-200">
+                                        <p className="text-xs text-gray-400 mb-1">Name</p>
+                                        <p className="font-medium text-gray-900">{selectedTx.borrower_name}</p>
+                                    </div>
+                                    <div className="bg-gray-50 p-3 rounded-lg group-hover:bg-white transition-colors border border-transparent group-hover:border-gray-200">
+                                        <p className="text-xs text-gray-400 mb-1">Roll Number</p>
+                                        <p className="font-medium text-gray-900">{selectedTx.borrower_roll}</p>
+                                    </div>
+                                    <div className="bg-gray-50 p-3 rounded-lg col-span-2 group-hover:bg-white transition-colors border border-transparent group-hover:border-gray-200">
+                                        <p className="text-xs text-gray-400 mb-1">Department</p>
+                                        <p className="font-medium text-gray-900">{selectedTx.borrower_dept || 'N/A'}</p>
+                                    </div>
                                 </div>
-                                <div className="bg-gray-50 p-3 rounded-lg">
-                                    <p className="text-xs text-gray-400 mb-1">Roll Number</p>
-                                    <p className="font-medium text-gray-900">{selectedTx.borrower_roll}</p>
-                                </div>
-                                <div className="bg-gray-50 p-3 rounded-lg col-span-2">
-                                    <p className="text-xs text-gray-400 mb-1">Department</p>
-                                    <p className="font-medium text-gray-900">{selectedTx.borrower_dept || 'N/A'}</p>
-                                </div>
-                            </div>
+                            </Link>
                         </div>
 
                         {/* Transaction Stats */}
@@ -344,7 +355,10 @@ const TransactionApprovals = () => {
                             <div className="space-y-3">
                                 <div className="flex justify-between items-center text-sm">
                                     <span className="text-gray-500 flex items-center gap-2"><Calendar className="w-4 h-4" /> Requested</span>
-                                    <span className="font-medium">{selectedTx.issue_date ? format(new Date(selectedTx.issue_date), 'PPP') : 'Pending'}</span>
+                                    <span className="font-medium">
+                                        {selectedTx.created_at ? format(new Date(selectedTx.created_at), 'PPP p') :
+                                            (selectedTx.issue_date ? format(new Date(selectedTx.issue_date), 'PPP') : 'Pending')}
+                                    </span>
                                 </div>
                                 {selectedTx.due_date && (
                                     <div className="flex justify-between items-center text-sm">

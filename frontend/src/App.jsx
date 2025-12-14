@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import { useAuth } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 import { Loader2 } from 'lucide-react';
 import AccessDenied from './components/AccessDenied';
 
@@ -96,7 +97,7 @@ const ProtectedRoute = ({ children, requiredRole, requiredPermission, requiredAn
 
 function App() {
     return (
-        <>
+        <ToastProvider>
             <ScrollToTop />
             <Routes>
                 <Route path="/login" element={<Login />} />
@@ -160,7 +161,7 @@ function App() {
                     <Route path="payments" element={<Payments />} />
                 </Route>
             </Routes>
-        </>
+        </ToastProvider>
     );
 }
 

@@ -32,13 +32,18 @@ def permission_required(required_permission):
             if user.role == 'Admin':
                 return fn(*args, **kwargs)
 
+            # Support list of permissions (OR logic)
+            required_permissions = required_permission
+            if isinstance(required_permissions, str):
+                required_permissions = [required_permissions]
+
             # Check if user has any role that has the required permission
             has_perm = False
             if user.roles:
                 for role in user.roles:
                     if role.permissions:
                         for perm in role.permissions:
-                            if perm.name == required_permission:
+                            if perm.name in required_permissions:
                                 has_perm = True
                                 break
                     if has_perm:

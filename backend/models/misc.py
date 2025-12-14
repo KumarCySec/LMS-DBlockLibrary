@@ -48,9 +48,13 @@ class AttendanceLog(db.Model):
     check_in_time = db.Column(db.DateTime, nullable=False)
     check_out_time = db.Column(db.DateTime)
     duration_minutes = db.Column(db.Integer)
-    status = db.Column(db.String(20), default='ACTIVE') # ACTIVE, COMPLETED
+    status = db.Column(db.String(20), default='ACTIVE') # ACTIVE, COMPLETED, PENDING_APPROVAL, APPROVED, REJECTED
+    approved_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    approved_at = db.Column(db.DateTime)
+    rejection_reason = db.Column(db.Text)
     
-    user = db.relationship('User', backref='attendance_logs')
+    user = db.relationship('User', backref='attendance_logs', foreign_keys=[user_id])
+    approved_by = db.relationship('User', foreign_keys=[approved_by_id])
 
 class Announcement(db.Model):
     __tablename__ = 'announcements'

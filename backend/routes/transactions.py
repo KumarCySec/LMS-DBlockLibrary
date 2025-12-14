@@ -9,15 +9,26 @@ transactions_bp = Blueprint('transactions', __name__)
 
 from utils.notifications import send_notification, notify_roles
 
+def check_library_open():
+    """Helper to check if library is open"""
+    status_entry = AppSetting.query.get('library_status') # Assuming stored in Settings or LibraryStatus model? 
+    # Actually models/misc.py has LibraryStatus model. Let's use that.
+    from models.misc import LibraryStatus
+    status = LibraryStatus.query.order_by(LibraryStatus.updated_at.desc()).first()
+    if status and not status.is_open:
+        return False, status.message
+    return True, None
+
+
 @transactions_bp.route('/', methods=['GET'])
 @jwt_required()
-@role_required(['Admin', 'Incharge', 'Volunteer'])
+@permission_required(['approve_checkout', 'approve_return', 'approve_renew', 'manage_transactions'])
 def list_transactions():
     try:
         status_filter = request.args.get('status')
         query = Transaction.query
         
-        if status_filter:
+        if status_filter and status_filter != 'ALL':
             query = query.filter_by(status=status_filter)
             
         # Sort by ID desc as proxy for time if created_at missing, or add created_at to model if needed. 
@@ -49,6 +60,7 @@ def list_transactions():
                     "rejection_reason": getattr(tx, 'rejection_reason', None),
                     "processed_by": tx.processed_by.name if tx.processed_by else None,
                     "renewal_count": tx.renewal_count,
+                    "created_at": tx.created_at.isoformat() if tx.created_at else None,
                 })
             except Exception as e:
                 print(f"Error processing tx {tx.id}: {e}")
@@ -61,6 +73,11 @@ def list_transactions():
 @transactions_bp.route('/request', methods=['POST'])
 @jwt_required()
 def request_checkout():
+    # 1. Library Status Check
+    is_open, msg = check_library_open()
+    if not is_open:
+        return jsonify({"error": "Library is Closed", "message": msg or "Library is currently closed."}), 403
+
     current_user_id = get_jwt_identity()
     data = request.get_json()
     item_id = data.get('item_id')
@@ -131,6 +148,7 @@ def request_checkout():
     
     status = 'REQUESTED'
     issue_date = None
+    created_at = datetime.utcnow()
     due_date = None
     approved_by_id = None
     
@@ -159,7 +177,8 @@ def request_checkout():
         status=status,
         issue_date=issue_date,
         due_date=due_date,
-        approved_by_id=approved_by_id
+        approved_by_id=approved_by_id,
+        created_at=created_at
     )
     
     db.session.add(new_tx)
@@ -187,6 +206,11 @@ def request_checkout():
 @jwt_required()
 @permission_required('approve_checkout')
 def approve_checkout(tx_id):
+    # 1. Library Status Check
+    is_open, msg = check_library_open()
+    if not is_open:
+        return jsonify({"error": "Library is Closed", "message": msg or "Library is currently closed."}), 403
+
     current_user_id = get_jwt_identity()
     tx = Transaction.query.get_or_404(tx_id)
     data = request.get_json()
@@ -252,6 +276,16 @@ def approve_checkout(tx_id):
             f'Your request for {tx.item.title} has been rejected. Reason: {reason}' if reason else f'Your request for {tx.item.title} has been rejected.',
             related_transaction_id=tx.id
         )
+        # Log Activity
+        try:
+            activity = ActivityLog(
+                user_id=current_user_id,
+                action_type='CHECKOUT_REJECT',
+                details=f"Rejected checkout of {tx.item.title} for {tx.borrower.name}. Reason: {reason}",
+                ip_address=request.remote_addr
+            )
+            db.session.add(activity)
+        except: pass
         
     else:
         return jsonify({"error": "Invalid action"}), 400
@@ -262,6 +296,11 @@ def approve_checkout(tx_id):
 @transactions_bp.route('/<int:tx_id>/request-return', methods=['POST'])
 @jwt_required()
 def request_return(tx_id):
+    # 1. Library Status Check
+    is_open, msg = check_library_open()
+    if not is_open:
+        return jsonify({"error": "Library is Closed", "message": msg or "Library is currently closed."}), 403
+
     current_user_id = get_jwt_identity()
     tx = Transaction.query.get_or_404(tx_id)
     data = request.get_json()
@@ -273,11 +312,9 @@ def request_return(tx_id):
     if tx.status not in ['ISSUED', 'OVERDUE']:
         return jsonify({"error": "Item is not currently issued"}), 400
 
-    # Check for Same Day Return Restriction
-    same_day_setting = AppSetting.query.get('prevent_same_day_return')
-    if same_day_setting and same_day_setting.value.lower() == 'true':
-        if tx.issue_date.date() == datetime.utcnow().date():
-             return jsonify({"error": "Same Day Return Forbidden: You cannot return an item on the same day it was issued."}), 400
+    # Check for Same Day Return Restriction (Strict)
+    if tx.issue_date and tx.issue_date.date() == datetime.utcnow().date():
+         return jsonify({"error": "Same Day Return Forbidden: You cannot return an item on the same day it was issued."}), 400
 
     # Check for Unpaid Fines (Books)
     if tx.due_date and datetime.utcnow() > tx.due_date and tx.item.type != 'Laptop':
@@ -297,45 +334,18 @@ def request_return(tx_id):
     is_student = False
     if user.role == 'Student':
         is_student = True
+    if user.role == 'Student':
+        is_student = True
     elif user.roles and 'Student' in [r.name for r in user.roles]:
         is_student = True
+    
+    # STRICT RETURN POLICY: Disable Auto-Return for Staff. Everyone must Request first.
+    # if not is_student:
+    #    ... (Disabled Code) ...
+    #    return jsonify(...) 
 
-    if not is_student:
-        # Auto-return for staff
-        item = InventoryItem.query.get(tx.inventory_item_id)
-        item.quantity_available += 1
-        
-        if tx.copy_id:
-            from models import InventoryCopy
-            copy = InventoryCopy.query.get(tx.copy_id)
-            if copy:
-                copy.status = 'AVAILABLE'
-        
-        tx.status = 'RETURNED'
-        tx.return_date = datetime.utcnow()
-        tx.processed_by_id = current_user_id
-        tx.processed_at = datetime.utcnow()
-        
-        # Calculate Rent & Fine
-        if item.type == 'Laptop':
-            # Rent Logic
-            rent_days = max(1, (tx.return_date.date() - tx.issue_date.date()).days)
-            daily_rent_setting = AppSetting.query.get('laptop_daily_rent')
-            daily_rent = float(daily_rent_setting.value) if daily_rent_setting else 10.0
-            tx.rent_amount = rent_days * daily_rent
-            if tx.rent_amount > 0:
-                tx.payment_status = 'PENDING'
-        elif tx.return_date > tx.due_date:
-            # Book Fine Logic
-            fine_per_day = AppSetting.query.get('fine_per_day')
-            rate = float(fine_per_day.value) if fine_per_day else 10.0
-            overdue_days = (tx.return_date - tx.due_date).days
-            tx.fine_accrued = max(0, overdue_days * rate)
-            if tx.fine_accrued > 0:
-                tx.payment_status = 'PENDING'
-            
-        db.session.commit()
-        return jsonify({"message": "Item returned successfully (Auto-Staff)", "fine": tx.fine_accrued}), 200
+    # For now, just bypass this entire block to enforce "Return Request" flow.
+    pass 
 
     tx.status = 'RETURN_REQUESTED'
     tx.return_feedback = feedback
@@ -358,14 +368,19 @@ def request_return(tx_id):
 @jwt_required()
 @permission_required('approve_return')
 def approve_return(tx_id):
+    # 1. Library Status Check
+    is_open, msg = check_library_open()
+    if not is_open:
+        return jsonify({"error": "Library is Closed", "message": msg or "Library is currently closed."}), 403
+
     current_user_id = get_jwt_identity()
     tx = Transaction.query.get_or_404(tx_id)
     data = request.get_json() or {}
     action = data.get('action', 'approve') # Default to approve for backward compatibility
     reason = data.get('reason')
     
-    if tx.status not in ['ISSUED', 'OVERDUE', 'RETURN_REQUESTED']:
-        return jsonify({"error": "Invalid transaction status for return"}), 400
+    if tx.status not in ['RETURN_REQUESTED']:
+        return jsonify({"error": "Item has not been requested for return yet. Student must request first."}), 400
 
     # Check for Same Day Return Restriction (Staff Override? No, rule implies strictness, but maybe allow if explicitly needed. Let's enforce for now)
     if action == 'approve': # Only block actual return, not rejection
@@ -400,6 +415,18 @@ def approve_return(tx_id):
         )
         
         return jsonify({"message": "Return request rejected"}), 200
+
+    # Log Activity
+    try:
+        activity = ActivityLog(
+            user_id=current_user_id,
+            action_type='RETURN_REJECT',
+            details=f"Rejected return of {tx.item.title} from {tx.borrower.name}. Reason: {reason}",
+            ip_address=request.remote_addr
+        )
+        db.session.add(activity)
+        db.session.commit()
+    except: pass
         
     # Approval Logic
     item = InventoryItem.query.get(tx.inventory_item_id)
@@ -507,6 +534,11 @@ def cancel_request(tx_id):
 @transactions_bp.route('/<int:tx_id>/renew_request', methods=['POST'])
 @jwt_required()
 def request_renewal(tx_id):
+    # 1. Library Status Check
+    is_open, msg = check_library_open()
+    if not is_open:
+        return jsonify({"error": "Library is Closed", "message": msg or "Library is currently closed."}), 403
+    
     current_user_id = get_jwt_identity()
     tx = Transaction.query.get_or_404(tx_id)
     
@@ -516,11 +548,9 @@ def request_renewal(tx_id):
     if tx.status != 'ISSUED':
         return jsonify({"error": "Only issued items can be renewed"}), 400
 
-    # Check for Same Day Renewal Restriction
-    same_day_setting = AppSetting.query.get('prevent_same_day_return')
-    if same_day_setting and same_day_setting.value.lower() == 'true':
-        if tx.issue_date.date() == datetime.utcnow().date():
-             return jsonify({"error": "Same Day Renewal Forbidden: You cannot renew an item on the same day it was issued."}), 400
+    # Check for Same Day Renewal Restriction (Strict)
+    if tx.issue_date and tx.issue_date.date() == datetime.utcnow().date():
+         return jsonify({"error": "Same Day Renewal Forbidden: You cannot renew an item on the same day it was issued."}), 400
 
     # Check for Unpaid Fines (Books)
     if tx.due_date and datetime.utcnow() > tx.due_date and tx.item.type != 'Laptop':
@@ -582,6 +612,11 @@ def request_renewal(tx_id):
 @jwt_required()
 @permission_required('approve_renew')
 def approve_renewal(tx_id):
+    # 1. Library Status Check
+    is_open, msg = check_library_open()
+    if not is_open:
+        return jsonify({"error": "Library is Closed", "message": msg or "Library is currently closed."}), 403
+
     tx = Transaction.query.get_or_404(tx_id)
     data = request.get_json()
     action = data.get('action') # 'approve' or 'reject'

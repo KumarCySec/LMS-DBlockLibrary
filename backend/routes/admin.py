@@ -36,6 +36,22 @@ def update_settings():
             setting.updated_at = datetime.utcnow()
             db.session.add(setting)
     db.session.commit()
+    db.session.commit()
+    
+    # Log Activity
+    try:
+        updated_keys = ", ".join(data.keys())
+        activity = ActivityLog(
+            user_id=get_jwt_identity(),
+            action_type='UPDATE_SETTINGS',
+            details=f"Updated settings: {updated_keys}",
+            ip_address=request.remote_addr
+        )
+        db.session.add(activity)
+        db.session.commit()
+    except Exception as e:
+        print(f"Logging error: {e}")
+
     return jsonify({"message": "Settings updated"}), 200
 
 # --- Analytics ---
@@ -310,9 +326,32 @@ def assign_role(user_id):
 
     # Perform Assignment
     if role not in target_user.roles:
-        target_user.roles.append(role)
+        # REPLACE roles instead of appending to ensure single role source of truth (e.g. Student -> Volunteer)
+        target_user.roles = [role]
+        # Auto-approve if assigning a role (likely exiting pending state)
+        if target_user.status == 'pending_approval':
+            target_user.status = 'active' # or 'approved'? Model says 'approved' in comment line 25, but 'active' is often used. 
+            # Looking at previous file view of pending_approvals: Filter by status='pending_approval'.
+            # Looking at model: status comment 'pending_approval, approved, rejected, blocked'.
+            target_user.status = 'approved' 
+            target_user.approved_by_id = current_user_id
+            target_user.approved_at = datetime.utcnow()
+            
         db.session.commit()
         
+    # Log Activity
+    try:
+        activity = ActivityLog(
+            user_id=current_user_id,
+            action_type='ASSIGN_ROLE',
+            details=f"Assigned role {role_name} to {target_user.name} ({target_user.email})",
+            ip_address=request.remote_addr
+        )
+        db.session.add(activity)
+        db.session.commit()
+    except Exception as e:
+        print(f"Logging error: {e}")
+
     return jsonify({"message": f"Role {role_name} assigned to {target_user.name}"}), 200
 
 # --- Departments ---
@@ -482,6 +521,20 @@ def reset_transactions():
                 count += 1
             
             db.session.commit()
+            db.session.commit()
+            
+            # Log Activity
+            try:
+                activity = ActivityLog(
+                    user_id=current_user_id,
+                    action_type='SYSTEM_RESET',
+                    details=f"Forced return for {count} transactions (Type: ALL)",
+                    ip_address=request.remote_addr
+                )
+                db.session.add(activity)
+                db.session.commit()
+            except: pass
+
             return jsonify({"message": f"Successfully forced return for {count} transactions. Inventory updated."}), 200
 
         elif reset_type == 'date':
@@ -516,6 +569,20 @@ def reset_transactions():
                 count += 1
             
             db.session.commit()
+            db.session.commit()
+
+            # Log Activity
+            try:
+                activity = ActivityLog(
+                    user_id=current_user_id,
+                    action_type='SYSTEM_RESET',
+                    details=f"Deleted {count} transactions for date {target_date_str} (Type: DATE)",
+                    ip_address=request.remote_addr
+                )
+                db.session.add(activity)
+                db.session.commit()
+            except: pass
+
             return jsonify({"message": f"Deleted {count} transactions for {target_date_str}"}), 200
 
         elif reset_type == 'history':
