@@ -22,6 +22,10 @@ def create_app(config_class=Config):
 
     # Auto-create tables and seed data
     with app.app_context():
+        # Run Auto-Migration Check (Safe for Prod)
+        from utils.auto_migrate import check_and_migrate_db
+        check_and_migrate_db(app)
+
         db.create_all()
         # check if roles exist, if not, seed
         try:
