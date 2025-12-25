@@ -101,6 +101,12 @@ def get_today_roster():
     return jsonify({
         "date": s.date.isoformat(),
         "department": {"id": dept.id, "name": dept.name} if dept else None,
-        "volunteer1": {"id": v1.id, "name": v1.name, "phone": v1.phone_number, "email": v1.email} if v1 else None,
-        "volunteer2": {"id": v2.id, "name": v2.name, "phone": v2.phone_number, "email": v2.email} if v2 else None
+        "volunteer1": {
+            "id": v1.id, "name": v1.name, "phone": v1.phone_number, "email": v1.email,
+            "department": v1.department.name if v1.department else None 
+        } if v1 else None,
+        "volunteer2": {
+            "id": v2.id, "name": v2.name, "phone": v2.phone_number, "email": v2.email,
+             "department": v2.department.name if v2.department else None
+        } if v2 else None
     }), 200
