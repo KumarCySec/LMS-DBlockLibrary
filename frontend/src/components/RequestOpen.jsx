@@ -10,11 +10,11 @@ const RequestOpen = () => {
     const [loading, setLoading] = useState(false);
     const [requested, setRequested] = useState(false);
 
-    const [showModal, setShowModal] = useState(false);
+    // Unified Modal State: { show, title, message, type: 'success'|'error'|'warning'|'info' }
+    const [modalConfig, setModalConfig] = useState({ show: false, title: '', message: '', type: 'success' });
 
     useEffect(() => {
         checkStatus();
-        // Request notification permission
         if ('Notification' in window && Notification.permission !== 'granted') {
             Notification.requestPermission();
         }
@@ -28,7 +28,6 @@ const RequestOpen = () => {
             ]);
             setIsOpen(statusRes.data.is_open);
 
-            // Check if current user is on duty
             if (rosterRes.data) {
                 const userId = user.id;
                 const v1 = rosterRes.data.volunteer1?.id;
@@ -47,22 +46,40 @@ const RequestOpen = () => {
             setRequested(true);
 
             if (res.data.fallback) {
-                setShowModal(true);
-                // Auto dismiss after 3s
-                setTimeout(() => setShowModal(false), 4000);
+                setModalConfig({
+                    show: true,
+                    title: 'Request Sent (Fallback)',
+                    message: res.data.message || 'No volunteers duty today. Notified Incharges.',
+                    type: 'info'
+                });
             } else {
-                alert("Request sent to today's volunteers!");
+                setModalConfig({
+                    show: true,
+                    title: 'Request Sent',
+                    message: res.data.message || 'Volunteers have been notified!',
+                    type: 'success'
+                });
             }
         } catch (e) {
             if (e.response?.status === 429) {
-                // Cooldown
-                alert(e.response.data.message || "Please wait before requesting again.");
+                setModalConfig({
+                    show: true,
+                    title: 'Please Wait',
+                    message: e.response.data.message || 'You are requesting too frequently.',
+                    type: 'warning'
+                });
             } else {
-                console.error(e);
-                alert("Failed to send request: " + (e.response?.data?.message || "Check your connection"));
+                setModalConfig({
+                    show: true,
+                    title: 'Request Failed',
+                    message: e.response?.data?.message || 'Could not send request. Try again later.',
+                    type: 'error'
+                });
             }
         } finally {
             setLoading(false);
+            // Auto hide after 4s
+            setTimeout(() => setModalConfig(prev => ({ ...prev, show: false })), 4000);
         }
     };
 
@@ -70,7 +87,8 @@ const RequestOpen = () => {
 
     return (
         <>
-            <div className="fixed bottom-24 left-4 z-50">
+            {/* Mobile: Left-4 Bottom-24 | Desktop: Right-8 Bottom-8 */}
+            <div className="fixed bottom-24 left-4 md:left-auto md:right-8 md:bottom-8 z-50">
                 <Button
                     onClick={handleRequestOpen}
                     disabled={loading || requested}
@@ -79,25 +97,34 @@ const RequestOpen = () => {
                     {requested ? <Bell className="w-6 h-6 text-white" /> : <BellRing className="w-6 h-6 text-white" />}
                 </Button>
                 {!requested && (
-                    <div className="absolute left-16 top-2 bg-black/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                    <div className="absolute left-16 top-2 md:left-auto md:right-16 md:top-2 bg-black/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
                         Request to Open
                     </div>
                 )}
             </div>
 
-            {/* Fallback Modal */}
-            {showModal && (
+            {/* Unified Modal */}
+            {modalConfig.show && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 animate-in fade-in">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 animate-in zoom-in-95">
-                        <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-4 mx-auto text-amber-600">
-                            <BellRing className="w-6 h-6" />
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 mx-auto ${modalConfig.type === 'success' ? 'bg-emerald-100 text-emerald-600' :
+                                modalConfig.type === 'error' ? 'bg-red-100 text-red-600' :
+                                    modalConfig.type === 'warning' ? 'bg-amber-100 text-amber-600' :
+                                        'bg-blue-100 text-blue-600'
+                            }`}>
+                            {modalConfig.type === 'success' ? <BellRing className="w-6 h-6" /> :
+                                modalConfig.type === 'error' ? <Bell className="w-6 h-6" /> :
+                                    <BellRing className="w-6 h-6" />}
                         </div>
-                        <h3 className="text-lg font-bold text-center text-gray-900 mb-2">Request Sent</h3>
+                        <h3 className="text-lg font-bold text-center text-gray-900 mb-2">{modalConfig.title}</h3>
                         <p className="text-gray-600 text-center mb-6">
-                            No volunteers are assigned for today. Your request has been forwarded to the <span className="font-bold text-indigo-600">Incharges & Admins</span>.
+                            {modalConfig.message}
                         </p>
-                        <Button className="w-full bg-indigo-600 hover:bg-indigo-700" onClick={() => setShowModal(false)}>
-                            Okay, Thanks
+                        <Button className={`w-full ${modalConfig.type === 'success' ? 'bg-emerald-600 hover:bg-emerald-700' :
+                                modalConfig.type === 'error' ? 'bg-red-600 hover:bg-red-700' :
+                                    'bg-indigo-600 hover:bg-indigo-700'
+                            }`} onClick={() => setModalConfig(prev => ({ ...prev, show: false }))}>
+                            Okay
                         </Button>
                     </div>
                 </div>

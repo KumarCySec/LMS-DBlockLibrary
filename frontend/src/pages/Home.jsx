@@ -280,10 +280,11 @@ const Home = () => {
         <div className="min-h-screen bg-gray-50 pb-24">
             <FlyingAnnouncement />
 
-            <div className="max-w-xl mx-auto md:max-w-4xl px-4 pt-6 space-y-5">
+            {/* Desktop: Grid Layout, Mobile: Flex Column */}
+            <div className="max-w-xl mx-auto md:max-w-none px-4 pt-6 space-y-6 md:space-y-0 md:grid md:grid-cols-3 md:gap-6">
 
-                {/* Header */}
-                <div className="flex justify-between items-center mb-1">
+                {/* Header - Full Width */}
+                <div className="md:col-span-3 flex justify-between items-center">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
                         <div className="flex items-center gap-2 text-gray-500 text-sm">
@@ -293,18 +294,18 @@ const Home = () => {
                     </div>
                 </div>
 
-                {/* 1. Hero Section: Quick Checkout */}
+                {/* 1. Hero Section: Quick Checkout (2/3 Width on Desktop) */}
                 <div
                     onClick={() => setShowCheckout(true)}
-                    className="relative cursor-pointer group overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 p-6 shadow-lg shadow-indigo-200 transition-all hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]"
+                    className="md:col-span-2 relative cursor-pointer group overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 p-6 shadow-lg shadow-indigo-200 transition-all hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] flex flex-col justify-center min-h-[160px]"
                 >
                     <div className="relative z-10 flex items-center justify-between">
                         <div>
-                            <h2 className="text-2xl font-bold text-white mb-1">Quick Checkout</h2>
-                            <p className="text-indigo-100 text-sm">Tap to search for an item</p>
+                            <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Quick Checkout</h2>
+                            <p className="text-indigo-100 text-sm md:text-base">Tap to search & issue items instantly.</p>
                         </div>
-                        <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm group-hover:bg-white/30 transition-colors">
-                            <Zap className="w-8 h-8 text-white" />
+                        <div className="bg-white/20 p-4 rounded-xl backdrop-blur-sm group-hover:bg-white/30 transition-colors">
+                            <Zap className="w-8 h-8 md:w-10 md:h-10 text-white" />
                         </div>
                     </div>
                     {/* Decorative Circles */}
@@ -312,34 +313,34 @@ const Home = () => {
                     <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-500/30 rounded-full blur-xl"></div>
                 </div>
 
-                {/* Stats Row */}
-                <div className="grid grid-cols-2 gap-4">
-                    <Card className="bg-white shadow-sm border-0">
-                        <CardContent className="p-3 flex items-center justify-between">
+                {/* Stats Row (1/3 Width on Desktop - Stacked) */}
+                <div className="md:col-span-1 grid grid-cols-2 md:grid-cols-1 gap-4">
+                    <Card className="bg-white shadow-sm border-0 hover:shadow-md transition-shadow">
+                        <CardContent className="p-4 flex items-center justify-between h-full">
                             <div>
-                                <span className="text-xl font-bold text-gray-900 block">{stats.active_loans}</span>
-                                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wide">Active Loans</span>
+                                <span className="text-xl md:text-2xl font-bold text-gray-900 block">{stats.active_loans}</span>
+                                <span className="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wide">Active Loans</span>
                             </div>
-                            <div className="p-1.5 bg-indigo-50 rounded-lg">
-                                <Package className="w-4 h-4 text-indigo-600" />
+                            <div className="p-2 bg-indigo-50 rounded-lg">
+                                <Package className="w-5 h-5 text-indigo-600" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="bg-white shadow-sm border-0">
-                        <CardContent className="p-3 flex items-center justify-between">
+                    <Card className="bg-white shadow-sm border-0 hover:shadow-md transition-shadow">
+                        <CardContent className="p-4 flex items-center justify-between h-full">
                             <div>
-                                <span className="text-xl font-bold text-gray-900 block">{stats.overdue}</span>
-                                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wide">Overdue</span>
+                                <span className="text-xl md:text-2xl font-bold text-gray-900 block">{stats.overdue}</span>
+                                <span className="text-[10px] md:text-xs text-gray-500 font-bold uppercase tracking-wide">Overdue</span>
                             </div>
-                            <div className="p-1.5 bg-rose-50 rounded-lg">
-                                <Activity className="w-4 h-4 text-rose-600" />
+                            <div className="p-2 bg-rose-50 rounded-lg">
+                                <Activity className="w-5 h-5 text-rose-600" />
                             </div>
                         </CardContent>
                     </Card>
                 </div>
 
-                {/* 2. Live Status Card (Merged Status & Attendance) */}
-                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+                {/* 2. Live Status Card (Full Width) */}
+                <div className="md:col-span-3 bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 divide-y md:divide-y-0 md:divide-x divide-gray-100">
 
                     {/* Left: Library Status & Controls */}
                     <div className="md:w-1/2 flex flex-col justify-center">
@@ -382,7 +383,7 @@ const Home = () => {
                             </span>
                         </div>
 
-                        <div className="flex gap-3 overflow-x-auto pb-1">
+                        <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
                             {todayRoster && todayRoster.volunteers.length > 0 ? (
                                 todayRoster.volunteers.map((vol, idx) => (
                                     <div
@@ -408,10 +409,10 @@ const Home = () => {
                     </div>
                 </div>
 
-                {/* 3. Quick Actions Grid (Last) */}
-                <div>
+                {/* 3. Quick Actions Grid (Last) - Full Width */}
+                <div className="md:col-span-3">
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Quick Actions</h3>
-                    <div className="grid grid-cols-4 gap-4 md:gap-6 pb-24">
+                    <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 md:gap-6 pb-24 md:pb-0">
                         {visibleActions.map(action => (
                             <div
                                 key={action.id}
@@ -421,7 +422,7 @@ const Home = () => {
                                 <div className={cn("w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shadow-sm transition-transform group-hover:-translate-y-1 group-active:scale-95", action.color)}>
                                     <action.icon className="w-6 h-6 md:w-7 md:h-7" />
                                 </div>
-                                <span className="text-xs font-medium text-gray-600 text-center truncate w-full">{action.label}</span>
+                                <span className="text-xs font-medium text-gray-600 text-center truncate w-full group-hover:text-indigo-600 transition-colors">{action.label}</span>
                                 {action.badge && (
                                     <span className="absolute top-0 right-1 translate-x-1/2 -translate-y-1/4 bg-rose-500 text-white chat-xs font-bold px-1.5 rounded-full border-2 border-white shadow-sm">
                                         {action.badge}
