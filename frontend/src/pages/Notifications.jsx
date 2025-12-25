@@ -73,16 +73,21 @@ const Notifications = () => {
     if (loading && notifications.length === 0) return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
 
     return (
-        <div className="p-4 space-y-4 pb-24">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
+        <div className="p-4 space-y-4 pb-24 max-w-2xl mx-auto">
+            <div className="flex justify-between items-center mb-2">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                        Notifications
+                        {loading && <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
+                    </h1>
+                </div>
                 {activeTab === 'new' && notifications.length > 0 && (
-                    <div className="flex gap-2">
-                        <button onClick={markAllRead} className="text-xs font-medium text-indigo-600 hover:text-indigo-800">
-                            Mark all read
+                    <div className="flex gap-3">
+                        <button onClick={markAllRead} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1.5 rounded-full transition-colors">
+                            Mark Read
                         </button>
-                        <button onClick={clearAll} className="text-xs font-medium text-gray-500 hover:text-gray-700">
-                            Clear all
+                        <button onClick={clearAll} className="text-xs font-bold text-gray-500 hover:text-red-600 bg-gray-100 hover:bg-red-50 px-3 py-1.5 rounded-full transition-colors">
+                            Clear All
                         </button>
                     </div>
                 )}

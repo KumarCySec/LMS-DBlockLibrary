@@ -10,9 +10,12 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 
+import { useAuth } from '../../context/AuthContext';
+
 const UserDetail = () => {
     const { userId } = useParams();
     const navigate = useNavigate();
+    const { user: currentUser, refreshProfile } = useAuth(); // Get current user & refresh function
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);

@@ -9,9 +9,11 @@ import { cn } from '../../lib/utils';
 import { saveAs } from 'file-saver';
 import { format } from 'date-fns';
 
+import { useAuth } from '../../context/AuthContext';
 import BottomSheet from '../../components/ui/BottomSheet';
 
 const ManageUsers = () => {
+    const { user: currentUser, refreshProfile } = useAuth();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all'); // pending_approval, approved, rejected, all
@@ -112,6 +114,12 @@ const ManageUsers = () => {
             }
 
             await api.post(`/admin/users/${selectedUser.id}/role`, payload);
+
+            // If updating self, refresh profile immediately
+            if (currentUser && currentUser.id === selectedUser.id) {
+                await refreshProfile();
+            }
+
             fetchUsers();
             setShowRoleModal(false);
             alert("Role updated successfully!");

@@ -110,6 +110,16 @@ def update_status():
 @jwt_required()
 def get_notifications():
     current_user_id = get_jwt_identity()
+
+    # --- Auto-Cleanup: Delete notifications older than 3 days ---
+    try:
+        cutoff = datetime.utcnow() - timedelta(days=3)
+        Notification.query.filter(Notification.user_id == current_user_id, Notification.created_at < cutoff).delete()
+        db.session.commit()
+    except Exception as e:
+        print(f"Auto-cleanup error: {e}")
+        db.session.rollback()
+    
     include_past = request.args.get('include_past', 'false').lower() == 'true'
     
     query = Notification.query.filter_by(user_id=current_user_id)
@@ -268,6 +278,20 @@ def request_open():
     if not target_user_ids:
          return jsonify({"message": "No volunteers, Incharges, or Admins found to notify."}), 400
          
+    # --- Cooldown Check ---
+    # Check if user made a request in the last 1 hour
+    last_req = Notification.query.filter_by(
+        type='request_open',
+        title='Library Open Request'
+    ).filter(Notification.body.startswith(f"{user.name} ({user.roll_number})")).order_by(Notification.created_at.desc()).first()
+
+    if last_req and (datetime.utcnow() - last_req.created_at) < timedelta(minutes=10):
+        wait_min = int(10 - (datetime.utcnow() - last_req.created_at).total_seconds() / 60)
+        return jsonify({
+            "error": "cooldown",
+            "message": f"Please wait {wait_min} minutes before requesting again."
+        }), 429
+        
     # Create Notifications
     count = 0
     for uid in target_user_ids:

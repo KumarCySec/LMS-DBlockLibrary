@@ -54,7 +54,13 @@ const RequestOpen = () => {
                 alert("Request sent to today's volunteers!");
             }
         } catch (e) {
-            alert("Failed to send request: " + (e.response?.data?.message || e.response?.data?.error || e.message));
+            if (e.response?.status === 429) {
+                // Cooldown
+                alert(e.response.data.message || "Please wait before requesting again.");
+            } else {
+                console.error(e);
+                alert("Failed to send request: " + (e.response?.data?.message || "Check your connection"));
+            }
         } finally {
             setLoading(false);
         }
