@@ -111,10 +111,21 @@ def update_status():
 def get_notifications():
     current_user_id = get_jwt_identity()
 
-    # --- Auto-Cleanup: Delete notifications older than 3 days ---
+    # --- Auto-Cleanup: Delete notifications older than 7 days ---
     try:
-        cutoff = datetime.utcnow() - timedelta(days=3)
-        Notification.query.filter(Notification.user_id == current_user_id, Notification.created_at < cutoff).delete()
+        # 1. Hard Delete very old notifications (7 days)
+        cutoff_delete = datetime.utcnow() - timedelta(days=7)
+        Notification.query.filter(Notification.user_id == current_user_id, Notification.created_at < cutoff_delete).delete()
+        
+        # 2. Auto-Archive Read notifications older than 24 hours
+        cutoff_archive = datetime.utcnow() - timedelta(hours=24)
+        Notification.query.filter(
+            Notification.user_id == current_user_id, 
+            Notification.read_flag == True, 
+            Notification.archived == False,
+            Notification.created_at < cutoff_archive
+        ).update({"archived": True})
+        
         db.session.commit()
     except Exception as e:
         print(f"Auto-cleanup error: {e}")
@@ -153,14 +164,27 @@ def mark_all_read():
     db.session.commit()
     return jsonify({"message": "All marked as read"}), 200
 
+@common_bp.route('/notifications/archive-read', methods=['POST'])
+@jwt_required()
+def archive_read_notifications():
+    current_user_id = get_jwt_identity()
+    # Archive all READ, non-archived notifications
+    Notification.query.filter_by(
+        user_id=current_user_id, 
+        read_flag=True, 
+        archived=False
+    ).update({"archived": True})
+    db.session.commit()
+    return jsonify({"message": "Read notifications archived"}), 200
+
 @common_bp.route('/notifications/clear', methods=['POST'])
 @jwt_required()
 def clear_notifications():
     current_user_id = get_jwt_identity()
-    # Archive all non-archived notifications
+    # Archive ALL non-archived notifications (Inbox Zero)
     Notification.query.filter_by(user_id=current_user_id, archived=False).update({"archived": True, "read_flag": True})
     db.session.commit()
-    return jsonify({"message": "Notifications cleared"}), 200
+    return jsonify({"message": "All notifications moved to history"}), 200
 
 @common_bp.route('/notifications/<int:notif_id>/read', methods=['POST'])
 @jwt_required()

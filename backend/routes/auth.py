@@ -20,8 +20,13 @@ def register():
         if field not in data:
             return jsonify({"error": f"Missing field: {field}"}), 400
 
-    if User.query.filter((User.email == data['email']) | (User.roll_number == data['roll_number'])).first():
-        return jsonify({"error": "User with this email or roll number already exists"}), 409
+    existing_roll = User.query.filter_by(roll_number=data['roll_number']).first()
+    if existing_roll:
+        return jsonify({"error": "User with this Roll Number already exists"}), 409
+
+    existing_email = User.query.filter_by(email=data['email']).first()
+    if existing_email:
+        return jsonify({"error": "User with this Email already exists"}), 409
 
     # Auto-detect department from roll number if not provided or valid
     if not data.get('department_id'):

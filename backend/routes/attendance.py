@@ -79,10 +79,12 @@ def check_in():
     
     # Log Activity
     from models.misc import ActivityLog
+    # Convert to IST for display
+    check_in_ist = log.check_in_time + timedelta(hours=5, minutes=30)
     activity = ActivityLog(
         user_id=current_user_id,
         action_type='PUNCH_IN',
-        details=f"Checked in at {log.check_in_time.strftime('%H:%M')}",
+        details=f"Checked in at {check_in_ist.strftime('%H:%M')}",
         ip_address=request.remote_addr
     )
     db.session.add(activity)
@@ -119,10 +121,12 @@ def check_out():
     
     # Log Activity
     from models.misc import ActivityLog
+    # Convert to IST
+    check_out_ist = log.check_out_time + timedelta(hours=5, minutes=30)
     activity = ActivityLog(
         user_id=current_user_id,
         action_type='PUNCH_OUT',
-        details=f"Checked out at {log.check_out_time.strftime('%H:%M')}. Duration: {int(duration)} min",
+        details=f"Checked out at {check_out_ist.strftime('%H:%M')}. Duration: {int(duration)} min",
         ip_address=request.remote_addr
     )
     db.session.add(activity)

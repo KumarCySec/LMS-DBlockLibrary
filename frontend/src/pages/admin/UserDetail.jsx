@@ -343,7 +343,7 @@ const UserDetail = () => {
                             </div>
                         </div>
 
-                        {user.status !== 'blocked' && user.status !== 'rejected' && !isEditing && (
+                        {user.status !== 'blocked' && !isEditing && (
                             <Button onClick={handleDelete} variant="ghost" className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 text-xs font-bold uppercase tracking-wide border border-red-100">
                                 <Trash2 className="w-4 h-4 mr-2" /> Delete Account
                             </Button>
